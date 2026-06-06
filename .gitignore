@@ -1,0 +1,25 @@
+# =========================
+# Python cache
+# =========================
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# =========================
+# File di sistema Mac
+# =========================
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# =========================
+# File di sistema Windows
+# =========================
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.cab
+Desktop.ini
+$RECYCLE.BIN/
