@@ -29,7 +29,7 @@ def main():
         jobs=jobs,
         C=C,
         gamma=1.0,
-        time_limit=1800,
+        time_limit=1800, # 30 minuti massimo per risolvere il modello altrimenti tronca esecuzione
         verbose=True,
         binary_w=True
     )
