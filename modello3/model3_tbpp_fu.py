@@ -305,6 +305,7 @@ def solve_model3(jobs, C, gamma=1.0, time_limit=None, verbose=True):
         "assignment": None,
         "sorted_jobs": sorted_jobs,
         "original_ids": original_ids,
+        "runtime": model.Runtime, # necessario per lo studio di scalabilità
         "model": model,
     }
 

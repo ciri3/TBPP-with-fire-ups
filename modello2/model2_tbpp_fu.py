@@ -151,6 +151,7 @@ def solve_model2(jobs, C, gamma=1.0, time_limit=None, verbose=True, binary_w=Tru
         "status": model.Status,
         "objective": None,
         "servers_used": None,
+        "runtime": model.Runtime, # necessario per la scalabilità
         "fireups": None,
         "assignment": {},
         "fireup_times": {},
