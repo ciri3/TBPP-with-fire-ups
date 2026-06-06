@@ -35,16 +35,9 @@ def generate_jobs(
         e_i = s_i + d_i
         c_i = random.randint(c_min, c_max)
 
-        jobs.append({
-            "id": i,
-            "s": s_i,
-            "e": e_i,
-            "c": c_i
-        })
+        jobs.append((s_i, e_i, c_i))
 
-    jobs.sort(key=lambda job: (job["s"], job["e"], job["id"]))
+    jobs.sort(key=lambda job: (job[0], job[1]))
 
-    for new_id, job in enumerate(jobs, start=1):
-        job["id"] = new_id
 
     return jobs

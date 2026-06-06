@@ -192,12 +192,19 @@ def solve_model1(jobs, C, gamma=1.0, time_limit=None, verbose=True, binary_w=Tru
     # 11. Estrazione risultati
     # -----------------------------
 
+    #if status not in [GRB.OPTIMAL, GRB.TIME_LIMIT]:
+    #    return {
+    #        "status": status,
+    #        "message": "Il modello non ha trovato #una soluzione utilizzabile.",
+    #        "model": model
+    #    }
+    
     status = model.Status
 
-    if status not in [GRB.OPTIMAL, GRB.TIME_LIMIT]:
+    if model.SolCount == 0:
         return {
             "status": status,
-            "message": "Il modello non ha trovato una soluzione utilizzabile.",
+            "message": "Il modello non ha trovato nessuna soluzione ammissibile.",
             "model": model
         }
 
