@@ -8,7 +8,7 @@ def main():
     print("Generazione dei job...")
 
     jobs = generate_jobs(
-        n=20,
+        n=40,
         C=C,
         s_factor=1.0,
         duration_type="short",
