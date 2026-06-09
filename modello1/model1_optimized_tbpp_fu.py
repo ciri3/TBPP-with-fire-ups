@@ -45,7 +45,7 @@ def solve_model1_optimized(
             raise ValueError(f"Job {i} ha c_i={c[i]} > C={C}. Istanza infeasible.")
 
     # Insieme globale dei tempi
-    T_global = sorted(set([s[i] for i in I] + [e[i] for i in I]))
+    #T_global = sorted(set([s[i] for i in I] + [e[i] for i in I]))
 
     # Insieme globale degli starting times
     TS_global = sorted(set(s[i] for i in I))
@@ -94,7 +94,7 @@ def solve_model1_optimized(
                 pred_k[k][t] = times[idx - 1]
 
     # Parametro a_it: job i attivo al tempo t?
-    # Lo calcoliamo solo quando serve.
+    # Lo calcoliamo solo quando serve. a(i,t)
     def is_active(i, t):
         return 1 if s[i] <= t < e[i] else 0
 

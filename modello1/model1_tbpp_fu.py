@@ -98,7 +98,7 @@ def solve_model1(jobs, C, gamma=1.0, time_limit=None, verbose=True, binary_w=Tru
 
    #in T invece che in TS 
     model.setObjective(
-        gamma * gp.quicksum(w[t, k] for t in T for k in K)
+        gamma * gp.quicksum(w[t, k] for t in TS for k in K)
         + gp.quicksum(z[k] for k in K),
         GRB.MINIMIZE
     )
