@@ -22,7 +22,6 @@ def solve_model2(jobs, C, gamma=1.0, time_limit=None, verbose=True, binary_w=Tru
     # 1. Ordinamento dei job per tempo di inizio crescente
     # --------------------------------------------------
     indexed_jobs = list(enumerate(jobs))
-
     indexed_jobs.sort(key=lambda item: (item[1][0], item[1][1], item[0]))
 
     # original_ids serve per tornare agli indici originali dei job
@@ -33,7 +32,6 @@ def solve_model2(jobs, C, gamma=1.0, time_limit=None, verbose=True, binary_w=Tru
     c = [job[2] for idx, job in indexed_jobs]
 
     n = len(jobs)
-
     I = range(n)
     K = range(n)
 
