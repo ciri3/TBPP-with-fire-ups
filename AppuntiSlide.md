@@ -26,3 +26,10 @@ però:
 "In any case, we would like to state that the additional (time) effort of the lifting procedure is so low that we still recommend using this reduction, even if it may not be successful."
 
 ## miglioramenti modello 2
+...
+
+## Osservazioni  
+1. M1 è quello con prestazioni più costanti, il più affidabile, benché non sempre il più veloce
+    * è il più veloce per istanze molto grandi
+2. M2 in generale non è il migliore ma compete e se la cava certe volte (M1 < M2 < M3)
+3. M3 è di gran lunga il più veloce per istanze piccole e in generale è una buona euristica per ottenere una soluzione velocemente ma è il più instabile, il meno affidabile dal punto di vista delle prestazioni

@@ -15,7 +15,11 @@
     * test tra modelli ottimizzati e non
         * modello 1
         * modello 2
-        * modello 3
+        * modello 
+* uniformare
+    * stampe (es: precisione decimale)
+    * colori nei grafici
+* creare file da cui eseguire tutti i test (con menu di scelta)
 
 * creazione power point
     * ~~test modelli base vs ridotti~~ "compare_base_vs_opt_testbedA.py"
