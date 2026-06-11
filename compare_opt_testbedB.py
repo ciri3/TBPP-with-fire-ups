@@ -1,24 +1,23 @@
 import os
 import csv
 import time
-import itertools
 import statistics
 import matplotlib.pyplot as plt
 
-from testbed_generators.testbed_a_generator import generate_jobs
+from testbed_generators.testbed_b_generator import TestbedBGenerator
 from modello1.model1_optimized_tbpp_fu import solve_model1_optimized
 from modello2.model2_optimized_tbpp_fu import solve_model2_optimized
 from modello3.model3_optimized_tbpp_fu import solve_model3_optimized
 
 
 # ============================================================
-# Scalability test - Testbed A del paper
+# Scalability test - Testbed B / Category B del paper
 # Confronto unico tra M1, M2, M3 ottimizzati
-# Output richiesto:
-#     scalabilityTests/confronto_modelli_opt_testbedA
+# Output:
+#     scalabilityTests/confronto_modelli_opt_testbedB
 # ============================================================
 
-BASE_OUTPUT_DIR = os.path.join("scalabilityTests", "confronto_modelli_opt_testbedA")
+BASE_OUTPUT_DIR = os.path.join("scalabilityTests", "confronto_modelli_opt_testbedB")
 
 
 # ============================================================
@@ -55,16 +54,11 @@ def safe_stat(result, possible_keys):
 
 def run_model(model_name, model_function, jobs, C, gamma, time_limit):
     """
-    Esegue un singolo modello su una singola istanza.
+    Esegue un singolo modello su una singola istanza Testbed B.
 
     Oltre al runtime, prova a leggere:
     - num_vars: numero di variabili del modello Gurobi
     - num_constrs: numero di vincoli del modello Gurobi
-
-    ATTENZIONE: questi valori compaiono solo se i file dei modelli
-    restituiscono nel return finale:
-        "num_vars": model.NumVars,
-        "num_constrs": model.NumConstrs,
     """
     wall_start = time.time()
 
@@ -101,7 +95,7 @@ def save_csv(path, rows):
         writer.writerows(rows)
 
 
-def make_runtime_plot(n_values, n_rows, models, graph_png):
+def make_runtime_plot(T_values, T_rows, models, graph_png):
     plt.figure(figsize=(10, 6))
 
     markers = ["o", "s", "^"]
@@ -109,12 +103,12 @@ def make_runtime_plot(n_values, n_rows, models, graph_png):
 
     for idx, model_name in enumerate(models):
         y = []
-        for n in n_values:
-            match = [r for r in n_rows if r["n"] == n and r["model"] == model_name]
+        for T_size in T_values:
+            match = [r for r in T_rows if r["T_size"] == T_size and r["model"] == model_name]
             y.append(match[0]["mean_runtime"] if match else None)
 
         plt.plot(
-            list(n_values),
+            list(T_values),
             y,
             marker=markers[idx % len(markers)],
             linestyle=linestyles[idx % len(linestyles)],
@@ -122,10 +116,10 @@ def make_runtime_plot(n_values, n_rows, models, graph_png):
             label=model_name,
         )
 
-    plt.title("Testbed A - confronto modelli ottimizzati - runtime medio")
-    plt.xlabel("Numero di job n")
+    plt.title("Testbed B - confronto modelli ottimizzati - runtime medio")
+    plt.xlabel("Numero di time step |T|")
     plt.ylabel("Tempo medio di soluzione [s]")
-    plt.xticks(list(n_values))
+    plt.xticks(list(T_values))
     plt.grid(True, linestyle=":", alpha=0.7)
     plt.legend()
     plt.tight_layout()
@@ -133,7 +127,7 @@ def make_runtime_plot(n_values, n_rows, models, graph_png):
     plt.close()
 
 
-def make_model_size_plot(n_values, n_rows, models, graph_png, metric, ylabel, title):
+def make_model_size_plot(T_values, T_rows, models, graph_png, metric, ylabel, title):
     """
     Crea il grafico di variabili oppure vincoli.
 
@@ -150,8 +144,8 @@ def make_model_size_plot(n_values, n_rows, models, graph_png, metric, ylabel, ti
         y = []
         has_value = False
 
-        for n in n_values:
-            match = [r for r in n_rows if r["n"] == n and r["model"] == model_name]
+        for T_size in T_values:
+            match = [r for r in T_rows if r["T_size"] == T_size and r["model"] == model_name]
             value = match[0][metric] if match else None
             y.append(value)
             if value is not None:
@@ -163,7 +157,7 @@ def make_model_size_plot(n_values, n_rows, models, graph_png, metric, ylabel, ti
 
         plotted_models += 1
         plt.plot(
-            list(n_values),
+            list(T_values),
             y,
             marker=markers[idx % len(markers)],
             linestyle=linestyles[idx % len(linestyles)],
@@ -180,9 +174,9 @@ def make_model_size_plot(n_values, n_rows, models, graph_png, metric, ylabel, ti
         return False
 
     plt.title(title)
-    plt.xlabel("Numero di job n")
+    plt.xlabel("Numero di time step |T|")
     plt.ylabel(ylabel)
-    plt.xticks(list(n_values))
+    plt.xticks(list(T_values))
     plt.grid(True, linestyle=":", alpha=0.7)
     plt.legend()
     plt.tight_layout()
@@ -195,38 +189,41 @@ def make_model_size_plot(n_values, n_rows, models, graph_png, metric, ylabel, ti
 # Esperimento principale
 # ============================================================
 
-def run_scalability_testbedA_optimized(
+def run_scalability_testbedB_optimized(
     output_dir=BASE_OUTPUT_DIR,
     C=100,
     gamma=1.0,
-    n_values=(7, 10, 13, 15),
-    s_factors=(1.0, 1.2),
-    durations=("short", "long"),
-    sizes=("low", "high"),
-    num_instances=5,
+    T_values=(7, 10, 15, 20),
+    classes=("I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"),
+    num_instances=3,
     first_seed=42,
     time_limit=900,
 ):
     """
-    Confronta in un unico esperimento i tre modelli ottimizzati.
+    Confronta in un unico esperimento i tre modelli ottimizzati sul Testbed B.
 
-    Produce dentro scalabilityTests/confronto_modelli_opt:
+    Produce dentro scalabilityTests/confronto_modelli_opt_testbedB:
     - detailed.csv
     - group_means.csv
-    - n_means.csv
+    - T_means.csv
     - scalability_runtime.png
     - scalability_num_vars.png, se i modelli restituiscono num_vars
     - scalability_num_constrs.png, se i modelli restituiscono num_constrs
 
-    Per replicare il Testbed A completo del paper, puoi impostare:
-        n_values=(50, 100, 150, 200)
+    Per avvicinarti al Testbed B del paper puoi usare, ad esempio:
+        T_values=(10, 15, 20, 30, 40, 50, 60)
+        classes=("I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X")
+        num_instances=10
         time_limit=1800
+
+    Nota pratica:
+        Le classi VIII, IX, X e valori grandi di |T| possono diventare pesanti.
     """
     os.makedirs(output_dir, exist_ok=True)
 
     detailed_csv = os.path.join(output_dir, "detailed.csv")
     group_csv = os.path.join(output_dir, "group_means.csv")
-    n_csv = os.path.join(output_dir, "n_means.csv")
+    T_csv = os.path.join(output_dir, "T_means.csv")
 
     runtime_png = os.path.join(output_dir, "scalability_runtime.png")
     vars_png = os.path.join(output_dir, "scalability_num_vars.png")
@@ -238,125 +235,139 @@ def run_scalability_testbedA_optimized(
         "M3 Opt": solve_model3_optimized,
     }
 
-    groups = list(itertools.product(n_values, s_factors, durations, sizes))
     detailed_rows = []
     group_rows = []
 
-    print("=" * 70)
-    print("SCALABILITY TEST - TESTBED A - CONFRONTO MODELLI OTTIMIZZATI")
-    print("=" * 70)
+    print("=" * 78)
+    print("SCALABILITY TEST - TESTBED B - CONFRONTO MODELLI OTTIMIZZATI")
+    print("=" * 78)
     print(f"Output dir: {output_dir}")
-    print(f"Gruppi: {len(groups)}")
-    print(f"Istanze per gruppo: {num_instances}")
+    print(f"T_values: {list(T_values)}")
+    print(f"Classes: {list(classes)}")
+    print(f"Istanze per classe: {num_instances}")
     print(f"Time limit per modello/istanza: {time_limit} s")
-    print("=" * 70)
+    print("=" * 78)
 
     global_start = time.time()
 
-    for n, s_factor, duration_type, size_type in groups:
-        print(f"\n--- Gruppo: n={n}, s_factor={s_factor}, duration={duration_type}, size={size_type} ---")
+    for T_size in T_values:
+        for class_name in classes:
+            print(f"\n--- Gruppo: |T|={T_size}, class={class_name} ---")
 
-        group_times = {m: [] for m in models}
-        group_vars = {m: [] for m in models}
-        group_constrs = {m: [] for m in models}
-        group_optimal_count = {m: 0 for m in models}
-        group_timelimit_count = {m: 0 for m in models}
-        group_other_status_count = {m: 0 for m in models}
+            group_times = {m: [] for m in models}
+            group_vars = {m: [] for m in models}
+            group_constrs = {m: [] for m in models}
+            group_n_jobs = []
+            group_optimal_count = {m: 0 for m in models}
+            group_timelimit_count = {m: 0 for m in models}
+            group_other_status_count = {m: 0 for m in models}
 
-        for seed in range(first_seed, first_seed + num_instances):
-            jobs = generate_jobs(
-                n=n,
-                C=C,
-                s_factor=s_factor,
-                duration_type=duration_type,
-                size_type=size_type,
-                seed=seed,
-            )
+            for instance_id in range(num_instances):
+                seed = TestbedBGenerator.stable_seed(
+                    base_seed=first_seed,
+                    T_size=T_size,
+                    class_name=class_name,
+                    instance_id=instance_id,
+                )
 
-            for model_name, model_function in models.items():
-                res = run_model(model_name, model_function, jobs, C, gamma, time_limit)
+                generator = TestbedBGenerator(seed=seed)
+                jobs = generator.generate_instance(
+                    T_size=T_size,
+                    class_name=class_name,
+                )
 
-                group_times[model_name].append(res["runtime"])
+                n_jobs = len(jobs)
+                group_n_jobs.append(n_jobs)
 
-                if res["num_vars"] is not None:
-                    group_vars[model_name].append(res["num_vars"])
-                if res["num_constrs"] is not None:
-                    group_constrs[model_name].append(res["num_constrs"])
+                for model_name, model_function in models.items():
+                    res = run_model(model_name, model_function, jobs, C, gamma, time_limit)
 
-                if res["status"] == 2:
-                    group_optimal_count[model_name] += 1
-                elif res["status"] == 9:
-                    group_timelimit_count[model_name] += 1
-                else:
-                    group_other_status_count[model_name] += 1
+                    group_times[model_name].append(res["runtime"])
 
-                detailed_rows.append({
-                    "n": n,
-                    "s_factor": s_factor,
-                    "duration": duration_type,
-                    "size": size_type,
-                    "seed": seed,
+                    if res["num_vars"] is not None:
+                        group_vars[model_name].append(res["num_vars"])
+                    if res["num_constrs"] is not None:
+                        group_constrs[model_name].append(res["num_constrs"])
+
+                    if res["status"] == 2:
+                        group_optimal_count[model_name] += 1
+                    elif res["status"] == 9:
+                        group_timelimit_count[model_name] += 1
+                    else:
+                        group_other_status_count[model_name] += 1
+
+                    detailed_rows.append({
+                        "T_size": T_size,
+                        "class": class_name,
+                        "instance_id": instance_id,
+                        "seed": seed,
+                        "n_jobs": n_jobs,
+                        "model": model_name,
+                        "status": res["status"],
+                        "objective": res["objective"],
+                        "runtime": res["runtime"],
+                        "wall_time": res["wall_time"],
+                        "servers": res["servers"],
+                        "fireups": res["fireups"],
+                        "num_vars": res["num_vars"],
+                        "num_constrs": res["num_constrs"],
+                    })
+
+            mean_n_jobs = statistics.mean(group_n_jobs) if group_n_jobs else None
+
+            for model_name in models:
+                avg_time = statistics.mean(group_times[model_name])
+                avg_vars = statistics.mean(group_vars[model_name]) if group_vars[model_name] else None
+                avg_constrs = statistics.mean(group_constrs[model_name]) if group_constrs[model_name] else None
+
+                group_rows.append({
+                    "T_size": T_size,
+                    "class": class_name,
                     "model": model_name,
-                    "status": res["status"],
-                    "objective": res["objective"],
-                    "runtime": res["runtime"],
-                    "wall_time": res["wall_time"],
-                    "servers": res["servers"],
-                    "fireups": res["fireups"],
-                    "num_vars": res["num_vars"],
-                    "num_constrs": res["num_constrs"],
+                    "mean_n_jobs": mean_n_jobs,
+                    "mean_runtime": avg_time,
+                    "mean_num_vars": avg_vars,
+                    "mean_num_constrs": avg_constrs,
+                    "optimal_count": group_optimal_count[model_name],
+                    "timelimit_count": group_timelimit_count[model_name],
+                    "other_status_count": group_other_status_count[model_name],
+                    "num_instances": num_instances,
                 })
 
-        for model_name in models:
-            avg_time = statistics.mean(group_times[model_name])
-            avg_vars = statistics.mean(group_vars[model_name]) if group_vars[model_name] else None
-            avg_constrs = statistics.mean(group_constrs[model_name]) if group_constrs[model_name] else None
+                print(
+                    f"{model_name:<8} | "
+                    f"mean n_jobs = {mean_n_jobs:6.2f} | "
+                    f"mean runtime = {avg_time:8.3f} s | "
+                    f"vars = {avg_vars if avg_vars is not None else 'NA'} | "
+                    f"constrs = {avg_constrs if avg_constrs is not None else 'NA'} | "
+                    f"opt = {group_optimal_count[model_name]}/{num_instances} | "
+                    f"TL = {group_timelimit_count[model_name]}/{num_instances}"
+                )
 
-            group_rows.append({
-                "n": n,
-                "s_factor": s_factor,
-                "duration": duration_type,
-                "size": size_type,
-                "model": model_name,
-                "mean_runtime": avg_time,
-                "mean_num_vars": avg_vars,
-                "mean_num_constrs": avg_constrs,
-                "optimal_count": group_optimal_count[model_name],
-                "timelimit_count": group_timelimit_count[model_name],
-                "other_status_count": group_other_status_count[model_name],
-                "num_instances": num_instances,
-            })
-
-            print(
-                f"{model_name:<8} | "
-                f"mean runtime = {avg_time:8.3f} s | "
-                f"vars = {avg_vars if avg_vars is not None else 'NA'} | "
-                f"constrs = {avg_constrs if avg_constrs is not None else 'NA'} | "
-                f"opt = {group_optimal_count[model_name]}/{num_instances} | "
-                f"TL = {group_timelimit_count[model_name]}/{num_instances}"
-            )
-
-        # Salvataggio progressivo: utile se interrompi il run.
-        save_csv(detailed_csv, detailed_rows)
-        save_csv(group_csv, group_rows)
+            # Salvataggio progressivo: utile se interrompi il run.
+            save_csv(detailed_csv, detailed_rows)
+            save_csv(group_csv, group_rows)
 
     # ------------------------------------------------------------
-    # Aggregazione per numero di job n
+    # Aggregazione per numero di time step |T|
     # ------------------------------------------------------------
-    n_rows = []
+    T_rows = []
 
-    for n in n_values:
+    for T_size in T_values:
         for model_name in models:
-            subset = [r for r in detailed_rows if r["n"] == n and r["model"] == model_name]
+            subset = [r for r in detailed_rows if r["T_size"] == T_size and r["model"] == model_name]
             runtimes = [r["runtime"] for r in subset]
             statuses = [r["status"] for r in subset]
+            n_jobs_values = [r["n_jobs"] for r in subset]
             vars_values = [r["num_vars"] for r in subset if r["num_vars"] is not None]
             constrs_values = [r["num_constrs"] for r in subset if r["num_constrs"] is not None]
 
             if runtimes:
-                n_rows.append({
-                    "n": n,
+                T_rows.append({
+                    "T_size": T_size,
                     "model": model_name,
+                    "mean_n_jobs": statistics.mean(n_jobs_values) if n_jobs_values else None,
+                    "median_n_jobs": statistics.median(n_jobs_values) if n_jobs_values else None,
                     "mean_runtime": statistics.mean(runtimes),
                     "median_runtime": statistics.median(runtimes),
                     "min_runtime": min(runtimes),
@@ -371,53 +382,53 @@ def run_scalability_testbedA_optimized(
 
     save_csv(detailed_csv, detailed_rows)
     save_csv(group_csv, group_rows)
-    save_csv(n_csv, n_rows)
+    save_csv(T_csv, T_rows)
 
     # ------------------------------------------------------------
     # Grafici finali
     # ------------------------------------------------------------
     make_runtime_plot(
-        n_values=n_values,
-        n_rows=n_rows,
+        T_values=T_values,
+        T_rows=T_rows,
         models=models,
         graph_png=runtime_png,
     )
 
     make_model_size_plot(
-        n_values=n_values,
-        n_rows=n_rows,
+        T_values=T_values,
+        T_rows=T_rows,
         models=models,
         graph_png=vars_png,
         metric="mean_num_vars",
         ylabel="Numero medio di variabili",
-        title="Testbed A - confronto modelli ottimizzati - variabili create",
+        title="Testbed B - confronto modelli ottimizzati - variabili create",
     )
 
     make_model_size_plot(
-        n_values=n_values,
-        n_rows=n_rows,
+        T_values=T_values,
+        T_rows=T_rows,
         models=models,
         graph_png=constrs_png,
         metric="mean_num_constrs",
         ylabel="Numero medio di vincoli",
-        title="Testbed A - confronto modelli ottimizzati - vincoli creati",
+        title="Testbed B - confronto modelli ottimizzati - vincoli creati",
     )
 
     total_minutes = (time.time() - global_start) / 60
 
-    print("\n" + "=" * 70)
+    print("\n" + "=" * 78)
     print(f"TEST COMPLETATO IN {total_minutes:.1f} MINUTI")
     print(f"CSV dettagliato:       {detailed_csv}")
     print(f"CSV medie per gruppo:  {group_csv}")
-    print(f"CSV medie per n:       {n_csv}")
+    print(f"CSV medie per |T|:     {T_csv}")
     print(f"Grafico runtime:       {runtime_png}")
     print(f"Grafico variabili:     {vars_png}")
     print(f"Grafico vincoli:       {constrs_png}")
-    print("=" * 70)
+    print("=" * 78)
 
 
 if __name__ == "__main__":
-    run_scalability_testbedA_optimized()
+    run_scalability_testbedB_optimized()
 
 
 # ============================================================

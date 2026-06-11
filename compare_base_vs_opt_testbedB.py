@@ -1,11 +1,10 @@
 import os
 import csv
 import time
-import itertools
 import statistics
 import matplotlib.pyplot as plt
 
-from testbed_generators.testbed_a_generator import generate_jobs
+from testbed_generators.testbed_b_generator import TestbedBGenerator
 
 # --- Import Modelli Base ---
 from modello1.model1_tbpp_fu import solve_model1
@@ -19,7 +18,7 @@ from modello3.model3_optimized_tbpp_fu import solve_model3_optimized
 
 
 # Tutti gli output verranno creati dentro questa cartella:
-BASE_OUTPUT_DIR = os.path.join("scalabilityTests", "TestaATesta_TestbedA")
+BASE_OUTPUT_DIR = os.path.join("scalabilityTests", "TestaATesta_TestbedB")
 
 
 # =====================================================================
@@ -46,7 +45,7 @@ def safe_runtime(result, time_limit):
 def safe_stat(result, possible_keys):
     """
     Cerca una statistica nel dizionario risultato usando più possibili nomi.
-    Serve perché i tuoi solve_model possono usare chiavi diverse.
+    Serve perché i solve_model possono usare chiavi diverse.
     """
     for key in possible_keys:
         if key in result:
@@ -97,19 +96,22 @@ def save_csv(path, rows):
         writer.writerows(rows)
 
 
-def make_runtime_plot(n_values, n_rows, dict_models, graph_png, title):
+def make_runtime_plot(T_values, T_rows, dict_models, graph_png, title):
     plt.figure(figsize=(9, 6))
     markers = ["o", "s", "^", "x", "D", "*"]
     linestyles = ["-", "--", "-.", ":", "-", "--"]
 
     for idx, model_name in enumerate(dict_models):
         y = []
-        for n in n_values:
-            match = [r for r in n_rows if r["n"] == n and r["model"] == model_name]
+        for T_size in T_values:
+            match = [
+                r for r in T_rows
+                if r["T_size"] == T_size and r["model"] == model_name
+            ]
             y.append(match[0]["mean_runtime"] if match else None)
 
         plt.plot(
-            list(n_values),
+            list(T_values),
             y,
             marker=markers[idx % len(markers)],
             linestyle=linestyles[idx % len(linestyles)],
@@ -118,9 +120,9 @@ def make_runtime_plot(n_values, n_rows, dict_models, graph_png, title):
         )
 
     plt.title(title)
-    plt.xlabel("Numero di job n")
+    plt.xlabel("Numero di istanti temporali |T|")
     plt.ylabel("Tempo medio di soluzione [s]")
-    plt.xticks(list(n_values))
+    plt.xticks(list(T_values))
     plt.grid(True, linestyle=":", alpha=0.7)
     plt.legend()
     plt.tight_layout()
@@ -128,13 +130,12 @@ def make_runtime_plot(n_values, n_rows, dict_models, graph_png, title):
     plt.close()
 
 
-def make_model_size_plot(n_values, n_rows, dict_models, graph_png, metric, ylabel, title):
+def make_model_size_plot(T_values, T_rows, dict_models, graph_png, metric, ylabel, title):
     """
     Crea un grafico per variabili oppure vincoli.
 
     Se un modello non ha valori disponibili, viene saltato.
-    Se meno di due modelli hanno valori disponibili, il grafico non viene creato:
-    così evitiamo grafici con una sola linea che possono trarre in inganno.
+    Se meno di due modelli hanno valori disponibili, il grafico non viene creato.
     """
     plt.figure(figsize=(9, 6))
     markers = ["o", "s", "^", "x", "D", "*"]
@@ -146,8 +147,11 @@ def make_model_size_plot(n_values, n_rows, dict_models, graph_png, metric, ylabe
         y = []
         has_at_least_one_value = False
 
-        for n in n_values:
-            match = [r for r in n_rows if r["n"] == n and r["model"] == model_name]
+        for T_size in T_values:
+            match = [
+                r for r in T_rows
+                if r["T_size"] == T_size and r["model"] == model_name
+            ]
             value = match[0][metric] if match else None
             y.append(value)
             if value is not None:
@@ -159,7 +163,7 @@ def make_model_size_plot(n_values, n_rows, dict_models, graph_png, metric, ylabe
 
         plotted_models += 1
         plt.plot(
-            list(n_values),
+            list(T_values),
             y,
             marker=markers[idx % len(markers)],
             linestyle=linestyles[idx % len(linestyles)],
@@ -176,9 +180,9 @@ def make_model_size_plot(n_values, n_rows, dict_models, graph_png, metric, ylabe
         return False
 
     plt.title(title)
-    plt.xlabel("Numero di job n")
+    plt.xlabel("Numero di istanti temporali |T|")
     plt.ylabel(ylabel)
-    plt.xticks(list(n_values))
+    plt.xticks(list(T_values))
     plt.grid(True, linestyle=":", alpha=0.7)
     plt.legend()
     plt.tight_layout()
@@ -187,160 +191,221 @@ def make_model_size_plot(n_values, n_rows, dict_models, graph_png, metric, ylabe
     return True
 
 
+def make_mean_jobs_plot(T_values, T_rows, graph_png, title):
+    """
+    Grafico del numero medio di job generati dal Testbed B.
+
+    Nel Testbed B non scegli direttamente n.
+    Scegli |T| e classe; il numero di job nasce dalla costruzione casuale.
+    """
+    plt.figure(figsize=(9, 6))
+
+    y = []
+    for T_size in T_values:
+        match = [r for r in T_rows if r["T_size"] == T_size]
+        if match:
+            # T_rows contiene una riga per ogni modello; il numero medio di job
+            # è uguale per i due modelli dello stesso confronto.
+            y.append(match[0]["mean_n_jobs"])
+        else:
+            y.append(None)
+
+    plt.plot(list(T_values), y, marker="o", linewidth=2)
+    plt.title(title)
+    plt.xlabel("Numero di istanti temporali |T|")
+    plt.ylabel("Numero medio di job generati")
+    plt.xticks(list(T_values))
+    plt.grid(True, linestyle=":", alpha=0.7)
+    plt.tight_layout()
+    plt.savefig(graph_png, dpi=300)
+    plt.close()
+
+
 # =====================================================================
-# ESPERIMENTO HEAD-TO-HEAD
+# ESPERIMENTO HEAD-TO-HEAD SU TESTBED B
 # =====================================================================
 
-def run_head_to_head_comparison(
+def run_head_to_head_comparison_testbedB(
     comparison_name,
     dict_models,
     output_dir,
     C=100,
     gamma=1.0,
-    n_values=(50, 100, 150, 200),
-    s_factors=(1.0, 1.2),
-    durations=("short", "long"),
-    sizes=("low", "high"),
-    num_instances=5,
-    first_seed=42,
-    time_limit=1800,
+    T_values=(5, 10, 15, 20),
+    classes=("I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X"),
+    instances_per_class=3,
+    base_seed=42,
+    time_limit=900,
 ):
     """
-    Esegue il Testbed A confrontando esattamente i modelli passati in dict_models.
+    Esegue il Testbed B confrontando esattamente i modelli passati in dict_models.
 
     Produce dentro output_dir:
     - detailed.csv: una riga per ogni istanza e modello
-    - group_means.csv: media per gruppo Testbed A
-    - n_means.csv: media aggregata per numero di job n
-    - scalability_runtime.png: grafico runtime medio
-    - scalability_num_vars.png: grafico numero medio variabili, se disponibile per entrambi i modelli
-    - scalability_num_constrs.png: grafico numero medio vincoli, se disponibile per entrambi i modelli
+    - group_means.csv: media per gruppo (|T|, classe)
+    - T_means.csv: media aggregata per |T|
+    - scalability_runtime.png: grafico runtime medio rispetto a |T|
+    - scalability_num_vars.png: grafico numero medio variabili, se disponibile
+    - scalability_num_constrs.png: grafico numero medio vincoli, se disponibile
+    - scalability_mean_jobs.png: grafico numero medio di job generati rispetto a |T|
+
+    Nota:
+    Nel Testbed B non scegli direttamente n.
+    Il numero di job viene generato in base a |T|, alla classe e alla percentuale
+    di job ereditati dal time step precedente.
     """
     os.makedirs(output_dir, exist_ok=True)
 
     detailed_csv = os.path.join(output_dir, "detailed.csv")
     group_csv = os.path.join(output_dir, "group_means.csv")
-    n_csv = os.path.join(output_dir, "n_means.csv")
+    T_csv = os.path.join(output_dir, "T_means.csv")
 
     runtime_png = os.path.join(output_dir, "scalability_runtime.png")
     vars_png = os.path.join(output_dir, "scalability_num_vars.png")
     constrs_png = os.path.join(output_dir, "scalability_num_constrs.png")
+    mean_jobs_png = os.path.join(output_dir, "scalability_mean_jobs.png")
 
-    groups = list(itertools.product(n_values, s_factors, durations, sizes))
     detailed_rows = []
     group_rows = []
 
     print(f"\n{'=' * 70}")
-    print(f"AVVIO SFIDA: {comparison_name.upper()}")
+    print(f"AVVIO SFIDA TESTBED B: {comparison_name.upper()}")
+    print(f"T_values: {list(T_values)}")
+    print(f"Classes: {list(classes)}")
+    print(f"Instances per class: {instances_per_class}")
     print(f"Output dir: {output_dir}")
     print(f"{'=' * 70}")
 
     global_start = time.time()
 
-    for n, s_factor, duration_type, size_type in groups:
-        print(f"--- Gruppo: n={n}, s={s_factor}, dur={duration_type}, size={size_type} ---")
+    for T_size in T_values:
+        if T_size < 2:
+            raise ValueError("T_values deve contenere solo valori >= 2.")
 
-        group_times = {m: [] for m in dict_models}
-        group_vars = {m: [] for m in dict_models}
-        group_constrs = {m: [] for m in dict_models}
-        group_optimal_count = {m: 0 for m in dict_models}
-        group_timelimit_count = {m: 0 for m in dict_models}
-        group_other_status_count = {m: 0 for m in dict_models}
+        for class_name in classes:
+            if class_name not in TestbedBGenerator.CLASS_PARAMS:
+                raise ValueError(f"Classe non valida: {class_name}")
 
-        for seed in range(first_seed, first_seed + num_instances):
-            jobs = generate_jobs(
-                n=n,
-                C=C,
-                s_factor=s_factor,
-                duration_type=duration_type,
-                size_type=size_type,
-                seed=seed,
-            )
+            print(f"--- Gruppo: |T|={T_size}, class={class_name} ---")
 
-            for model_name, model_function in dict_models.items():
-                res = run_model(model_name, model_function, jobs, C, gamma, time_limit)
+            group_times = {m: [] for m in dict_models}
+            group_vars = {m: [] for m in dict_models}
+            group_constrs = {m: [] for m in dict_models}
+            group_optimal_count = {m: 0 for m in dict_models}
+            group_timelimit_count = {m: 0 for m in dict_models}
+            group_other_status_count = {m: 0 for m in dict_models}
+            group_n_jobs = []
 
-                group_times[model_name].append(res["runtime"])
+            for instance_id in range(instances_per_class):
+                seed = TestbedBGenerator.stable_seed(
+                    base_seed=base_seed,
+                    T_size=T_size,
+                    class_name=class_name,
+                    instance_id=instance_id,
+                )
 
-                if res["num_vars"] is not None:
-                    group_vars[model_name].append(res["num_vars"])
-                if res["num_constrs"] is not None:
-                    group_constrs[model_name].append(res["num_constrs"])
+                generator = TestbedBGenerator(seed=seed)
+                jobs = generator.generate_instance(
+                    T_size=T_size,
+                    class_name=class_name,
+                )
+                n_jobs = len(jobs)
+                group_n_jobs.append(n_jobs)
 
-                if res["status"] == 2:
-                    group_optimal_count[model_name] += 1
-                elif res["status"] == 9:
-                    group_timelimit_count[model_name] += 1
-                else:
-                    group_other_status_count[model_name] += 1
+                for model_name, model_function in dict_models.items():
+                    res = run_model(model_name, model_function, jobs, C, gamma, time_limit)
 
-                detailed_rows.append({
-                    "n": n,
-                    "s_factor": s_factor,
-                    "duration": duration_type,
-                    "size": size_type,
-                    "seed": seed,
+                    group_times[model_name].append(res["runtime"])
+
+                    if res["num_vars"] is not None:
+                        group_vars[model_name].append(res["num_vars"])
+                    if res["num_constrs"] is not None:
+                        group_constrs[model_name].append(res["num_constrs"])
+
+                    if res["status"] == 2:
+                        group_optimal_count[model_name] += 1
+                    elif res["status"] == 9:
+                        group_timelimit_count[model_name] += 1
+                    else:
+                        group_other_status_count[model_name] += 1
+
+                    detailed_rows.append({
+                        "T_size": T_size,
+                        "class": class_name,
+                        "instance_id": instance_id,
+                        "seed": seed,
+                        "n_jobs": n_jobs,
+                        "model": model_name,
+                        "status": res["status"],
+                        "objective": res["objective"],
+                        "runtime": res["runtime"],
+                        "wall_time": res["wall_time"],
+                        "servers": res["servers"],
+                        "fireups": res["fireups"],
+                        "num_vars": res["num_vars"],
+                        "num_constrs": res["num_constrs"],
+                    })
+
+            mean_n_jobs = statistics.mean(group_n_jobs)
+
+            for model_name in dict_models:
+                avg_time = statistics.mean(group_times[model_name])
+                avg_vars = statistics.mean(group_vars[model_name]) if group_vars[model_name] else None
+                avg_constrs = statistics.mean(group_constrs[model_name]) if group_constrs[model_name] else None
+
+                group_rows.append({
+                    "T_size": T_size,
+                    "class": class_name,
                     "model": model_name,
-                    "status": res["status"],
-                    "objective": res["objective"],
-                    "runtime": res["runtime"],
-                    "wall_time": res["wall_time"],
-                    "servers": res["servers"],
-                    "fireups": res["fireups"],
-                    "num_vars": res["num_vars"],
-                    "num_constrs": res["num_constrs"],
+                    "mean_n_jobs": mean_n_jobs,
+                    "mean_runtime": avg_time,
+                    "mean_num_vars": avg_vars,
+                    "mean_num_constrs": avg_constrs,
+                    "optimal_count": group_optimal_count[model_name],
+                    "timelimit_count": group_timelimit_count[model_name],
+                    "other_status_count": group_other_status_count[model_name],
+                    "num_instances": instances_per_class,
                 })
 
-        for model_name in dict_models:
-            avg_time = statistics.mean(group_times[model_name])
-            avg_vars = statistics.mean(group_vars[model_name]) if group_vars[model_name] else None
-            avg_constrs = statistics.mean(group_constrs[model_name]) if group_constrs[model_name] else None
+                print(
+                    f"{model_name:<15} | "
+                    f"mean n_jobs = {mean_n_jobs:6.2f} | "
+                    f"mean runtime = {avg_time:8.3f} s | "
+                    f"vars = {avg_vars if avg_vars is not None else 'NA'} | "
+                    f"constrs = {avg_constrs if avg_constrs is not None else 'NA'} | "
+                    f"opt = {group_optimal_count[model_name]}/{instances_per_class} | "
+                    f"TL = {group_timelimit_count[model_name]}/{instances_per_class}"
+                )
+            print()
 
-            group_rows.append({
-                "n": n,
-                "s_factor": s_factor,
-                "duration": duration_type,
-                "size": size_type,
-                "model": model_name,
-                "mean_runtime": avg_time,
-                "mean_num_vars": avg_vars,
-                "mean_num_constrs": avg_constrs,
-                "optimal_count": group_optimal_count[model_name],
-                "timelimit_count": group_timelimit_count[model_name],
-                "other_status_count": group_other_status_count[model_name],
-                "num_instances": num_instances,
-            })
-
-            print(
-                f"{model_name:<15} | "
-                f"mean runtime = {avg_time:8.3f} s | "
-                f"vars = {avg_vars if avg_vars is not None else 'NA'} | "
-                f"constrs = {avg_constrs if avg_constrs is not None else 'NA'} | "
-                f"opt = {group_optimal_count[model_name]}/{num_instances} | "
-                f"TL = {group_timelimit_count[model_name]}/{num_instances}"
-            )
-        print()
-
-        # Salvataggio progressivo, utile se interrompi l'esecuzione
-        save_csv(detailed_csv, detailed_rows)
-        save_csv(group_csv, group_rows)
+            # Salvataggio progressivo, utile se interrompi l'esecuzione
+            save_csv(detailed_csv, detailed_rows)
+            save_csv(group_csv, group_rows)
 
     # -----------------------------------------------------------------
-    # Aggregazione per n: qui si vede la scalabilità rispetto ai job
+    # Aggregazione per |T|
     # -----------------------------------------------------------------
-    n_rows = []
-    for n in n_values:
+    T_rows = []
+    for T_size in T_values:
         for model_name in dict_models:
-            subset = [r for r in detailed_rows if r["n"] == n and r["model"] == model_name]
+            subset = [
+                r for r in detailed_rows
+                if r["T_size"] == T_size and r["model"] == model_name
+            ]
             runtimes = [r["runtime"] for r in subset]
             statuses = [r["status"] for r in subset]
+            n_jobs_values = [r["n_jobs"] for r in subset]
             vars_values = [r["num_vars"] for r in subset if r["num_vars"] is not None]
             constrs_values = [r["num_constrs"] for r in subset if r["num_constrs"] is not None]
 
             if runtimes:
-                n_rows.append({
-                    "n": n,
+                T_rows.append({
+                    "T_size": T_size,
                     "model": model_name,
+                    "mean_n_jobs": statistics.mean(n_jobs_values),
+                    "median_n_jobs": statistics.median(n_jobs_values),
+                    "min_n_jobs": min(n_jobs_values),
+                    "max_n_jobs": max(n_jobs_values),
                     "mean_runtime": statistics.mean(runtimes),
                     "median_runtime": statistics.median(runtimes),
                     "min_runtime": min(runtimes),
@@ -355,37 +420,44 @@ def run_head_to_head_comparison(
 
     save_csv(detailed_csv, detailed_rows)
     save_csv(group_csv, group_rows)
-    save_csv(n_csv, n_rows)
+    save_csv(T_csv, T_rows)
 
     # -----------------------------------------------------------------
     # Grafici finali
     # -----------------------------------------------------------------
     make_runtime_plot(
-        n_values=n_values,
-        n_rows=n_rows,
+        T_values=T_values,
+        T_rows=T_rows,
         dict_models=dict_models,
         graph_png=runtime_png,
-        title=f"Testbed A - {comparison_name} - runtime medio",
+        title=f"Testbed B - {comparison_name} - runtime medio",
     )
 
     make_model_size_plot(
-        n_values=n_values,
-        n_rows=n_rows,
+        T_values=T_values,
+        T_rows=T_rows,
         dict_models=dict_models,
         graph_png=vars_png,
         metric="mean_num_vars",
         ylabel="Numero medio di variabili",
-        title=f"Testbed A - {comparison_name} - variabili create",
+        title=f"Testbed B - {comparison_name} - variabili create",
     )
 
     make_model_size_plot(
-        n_values=n_values,
-        n_rows=n_rows,
+        T_values=T_values,
+        T_rows=T_rows,
         dict_models=dict_models,
         graph_png=constrs_png,
         metric="mean_num_constrs",
         ylabel="Numero medio di vincoli",
-        title=f"Testbed A - {comparison_name} - vincoli creati",
+        title=f"Testbed B - {comparison_name} - vincoli creati",
+    )
+
+    make_mean_jobs_plot(
+        T_values=T_values,
+        T_rows=T_rows,
+        graph_png=mean_jobs_png,
+        title=f"Testbed B - {comparison_name} - numero medio di job generati",
     )
 
     print(f"Sfida completata in {(time.time() - global_start) / 60:.1f} min")
@@ -397,18 +469,20 @@ def run_head_to_head_comparison(
 # =====================================================================
 
 def wrap_m1_base(jobs, C, gamma, time_limit, verbose):
-    # SALVAVITA: evita OOM su M1 base.
-    # Con N_VALS=(3,5,7,10) non dovrebbe scattare.
-    if len(jobs) > 25:
-        return {
-            "status": 9,
-            "runtime": time_limit,
-            "objective": None,
-            "servers_used": None,
-            "fireups": None,
-            "num_vars": None,
-            "num_constrs": None,
-        }
+    # Salvavita: M1 base può diventare molto pesante.
+    # Nel Testbed B il numero di job non è fissato direttamente:
+    # cresce in base a |T| e alla classe.
+    #if len(jobs) > 25:
+    #    return {
+    #        "status": 9,
+    #        "runtime": time_limit,
+    #        "objective": None,
+    #        "servers_used": None,
+    #        "fireups": None,
+    #        "num_vars": None,
+    #        "num_constrs": None,
+    #    }
+
     return solve_model1(
         jobs=jobs,
         C=C,
@@ -445,55 +519,59 @@ def wrap_m3_base(jobs, C, gamma, time_limit, verbose):
 # =====================================================================
 
 def main():
-    # Parametri ridotti per confronto testa-a-testa.
-    # Se vuoi replicare più fedelmente il paper, usa (50, 100, 150, 200),
-    # ma con M1 base diventa facilmente pesante.
-    N_VALS = ( 10, 12, 15, 17)
-    NUM_INST = 5
+    # Parametri prudenti.
+    # Il Testbed B può generare più job di quanto ti aspetti, soprattutto
+    # nelle classi VIII, IX, X oppure con |T| grande.
+    T_VALS = (3,5,7)  # Valori più piccoli per evitare istanze troppo grandi
+    CLASSES = ("I", "II", "III", "IV", "V", "VI", "VII",)
+    INSTANCES_PER_CLASS = 3
     TIME_LIM = 900
 
     os.makedirs(BASE_OUTPUT_DIR, exist_ok=True)
 
     # --- SFIDA 1: M1 Base vs M1 Opt ---
-    run_head_to_head_comparison(
+    run_head_to_head_comparison_testbedB(
         comparison_name="Modello 1 (Base vs Ottimizzato)",
         dict_models={
             "M1 Base": wrap_m1_base,
             "M1 Opt": solve_model1_optimized,
         },
-        output_dir=os.path.join(BASE_OUTPUT_DIR, "results_testbedA_M1_vs_M1opt"),
-        n_values=N_VALS,
-        num_instances=NUM_INST,
+        output_dir=os.path.join(BASE_OUTPUT_DIR, "results_testbedB_M1_vs_M1opt"),
+        T_values=T_VALS,
+        classes=CLASSES,
+        instances_per_class=INSTANCES_PER_CLASS,
         time_limit=TIME_LIM,
     )
 
     # --- SFIDA 2: M2 Base vs M2 Opt ---
-    run_head_to_head_comparison(
+    run_head_to_head_comparison_testbedB(
         comparison_name="Modello 2 (Base vs Ottimizzato)",
         dict_models={
             "M2 Base": wrap_m2_base,
             "M2 Opt": solve_model2_optimized,
         },
-        output_dir=os.path.join(BASE_OUTPUT_DIR, "results_testbedA_M2_vs_M2opt"),
-        n_values=N_VALS,
-        num_instances=NUM_INST,
+        output_dir=os.path.join(BASE_OUTPUT_DIR, "results_testbedB_M2_vs_M2opt"),
+        T_values=T_VALS,
+        classes=CLASSES,
+        instances_per_class=INSTANCES_PER_CLASS,
         time_limit=TIME_LIM,
     )
 
     # --- SFIDA 3: M3 Base vs M3 Opt ---
-    run_head_to_head_comparison(
+    run_head_to_head_comparison_testbedB(
         comparison_name="Modello 3 (Base vs Ottimizzato)",
         dict_models={
             "M3 Base": wrap_m3_base,
             "M3 Opt": solve_model3_optimized,
         },
-        output_dir=os.path.join(BASE_OUTPUT_DIR, "results_testbedA_M3_vs_M3opt"),
-        n_values=N_VALS,
-        num_instances=NUM_INST,
+        output_dir=os.path.join(BASE_OUTPUT_DIR, "results_testbedB_M3_vs_M3opt"),
+        T_values=T_VALS,
+        classes=CLASSES,
+        instances_per_class=INSTANCES_PER_CLASS,
         time_limit=TIME_LIM,
     )
 
-    print("\nTUTTI I CONFRONTI TESTA A TESTA SONO STATI COMPLETATI!")
+    print("\nTUTTI I CONFRONTI TESTA A TESTA SU TESTBED B SONO STATI COMPLETATI!")
     print(f"Cartella principale risultati: {BASE_OUTPUT_DIR}")
 
 

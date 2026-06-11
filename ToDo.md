@@ -24,10 +24,8 @@
 * creazione power point
     * ~~test modelli base vs ridotti~~ "compare_base_vs_opt_testbedA.py"
     * test modelli base vs ridotti B
-    * test modello1red vs modello2red A
-    * test modello1red vs modello2red B
-    * test modello2red vs modello3red A
-    * test modello2red vs modello3red B (eventualmente tutti 2 tre i red assieme)
+    * ~~test modelli di confronto ottimizzati~~ compare_opt_testbedA
+    * test modelli ridotti B
 
 * cose da testare all'umentare della grandezza dell'istanza
     * tempo
