@@ -18,6 +18,12 @@ from modello3.model3_optimized_tbpp_fu import solve_model3_optimized
 #     scalabilityTests/confronto_modelli_opt_testbedA
 # ============================================================
 
+
+# ==========================================================================
+# importante: regolare i valori del test modificando le variabili run_scalability_testbedA_optimized
+# ==========================================================================
+
+
 BASE_OUTPUT_DIR = os.path.join("scalabilityTests", "confronto_modelli_opt_testbedA")
 
 
@@ -199,7 +205,7 @@ def run_scalability_testbedA_optimized(
     output_dir=BASE_OUTPUT_DIR,
     C=100,
     gamma=1.0,
-    n_values=(7, 10, 13, 15),
+    n_values=(3, 5, 7,),
     s_factors=(1.0, 1.2),
     durations=("short", "long"),
     sizes=("low", "high"),
@@ -419,16 +425,3 @@ def run_scalability_testbedA_optimized(
 if __name__ == "__main__":
     run_scalability_testbedA_optimized()
 
-
-# ============================================================
-# NOTA IMPORTANTE
-# ============================================================
-# Se i grafici scalability_num_vars.png e scalability_num_constrs.png
-# non vengono creati, significa che almeno due dei tre solve_model ottimizzati
-# NON restituiscono ancora:
-#
-#     "num_vars": model.NumVars,
-#     "num_constrs": model.NumConstrs,
-#
-# dentro il dizionario finale del return.
-# ============================================================

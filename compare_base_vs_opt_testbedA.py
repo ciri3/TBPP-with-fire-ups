@@ -21,6 +21,11 @@ from modello3.model3_optimized_tbpp_fu import solve_model3_optimized
 # Tutti gli output verranno creati dentro questa cartella:
 BASE_OUTPUT_DIR = os.path.join("scalabilityTests", "TestaATesta_TestbedA")
 
+# ==========================================================================
+# importante: regolare i valori del test modificando le variabili in main()
+# ==========================================================================
+
+
 
 # =====================================================================
 # FUNZIONI DI SUPPORTO
@@ -448,7 +453,7 @@ def main():
     # Parametri ridotti per confronto testa-a-testa.
     # Se vuoi replicare più fedelmente il paper, usa (50, 100, 150, 200),
     # ma con M1 base diventa facilmente pesante.
-    N_VALS = ( 10, 12, 15, 17)
+    N_VALS = ( 3, 5, 7)
     NUM_INST = 5
     TIME_LIM = 900
 

@@ -20,6 +20,11 @@ from modello3.model3_optimized_tbpp_fu import solve_model3_optimized
 # Tutti gli output verranno creati dentro questa cartella:
 BASE_OUTPUT_DIR = os.path.join("scalabilityTests", "TestaATesta_TestbedB")
 
+# ==========================================================================
+# importante: regolare i valori del test modificando le variabili in main()
+# ==========================================================================
+
+
 
 # =====================================================================
 # FUNZIONI DI SUPPORTO
@@ -522,8 +527,8 @@ def main():
     # Parametri prudenti.
     # Il Testbed B può generare più job di quanto ti aspetti, soprattutto
     # nelle classi VIII, IX, X oppure con |T| grande.
-    T_VALS = (3,5,7)  # Valori più piccoli per evitare istanze troppo grandi
-    CLASSES = ("I", "II", "III", "IV", "V", "VI", "VII",)
+    T_VALS = (3,5,6)  # Valori più piccoli per evitare istanze troppo grandi
+    CLASSES = ("I", "II", "III",)
     INSTANCES_PER_CLASS = 3
     TIME_LIM = 900
 

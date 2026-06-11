@@ -23,7 +23,7 @@
 
 * creazione power point
     * ~~test modelli base vs ridotti~~ "compare_base_vs_opt_testbedA.py"
-    * test modelli base vs ridotti B
+    * ~~ test modelli base vs ridotti B~~ compare_base_vs_opt_testbedB
     * ~~test modelli di confronto ottimizzati~~ compare_opt_testbedA
     * test modelli ridotti B
 
