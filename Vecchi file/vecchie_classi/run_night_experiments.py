@@ -3,7 +3,7 @@ import csv
 import statistics
 import matplotlib.pyplot as plt
 
-from JobSetRandomGenerator import generate_jobs
+from testbed_generators.testbed_a_generator import generate_jobs
 from modello1.model1_tbpp_fu import solve_model1
 from modello1.model1_optimized_tbpp_fu import solve_model1_optimized
 from modello2.model2_tbpp_fu import solve_model2
