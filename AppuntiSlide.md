@@ -33,3 +33,7 @@ però:
     * è il più veloce per istanze molto grandi
 2. M2 in generale non è il migliore ma compete e se la cava certe volte (M1 < M2 < M3)
 3. M3 è di gran lunga il più veloce per istanze piccole e in generale è una buona euristica per ottenere una soluzione velocemente ma è il più instabile, il meno affidabile dal punto di vista delle prestazioni
+
+## analisi parametri scalabilityTest
+
+Due to limited computational resources, we used a reduced but structured benchmark. For Testbed A, we preserved the factorial structure of the original benchmark while reducing the number of jobs to n∈{25,50,75,100}. For Testbed B, we selected representative values of ∣T∣ and a subset of classes covering different levels of instance difficulty.

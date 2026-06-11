@@ -205,7 +205,7 @@ def run_scalability_testbedA_optimized(
     output_dir=BASE_OUTPUT_DIR,
     C=100,
     gamma=1.0,
-    n_values=(3, 5, 7,),
+    n_values=(25, 50, 75, 100),
     s_factors=(1.0, 1.2),
     durations=("short", "long"),
     sizes=("low", "high"),

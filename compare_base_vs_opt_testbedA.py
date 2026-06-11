@@ -404,16 +404,16 @@ def run_head_to_head_comparison(
 def wrap_m1_base(jobs, C, gamma, time_limit, verbose):
     # SALVAVITA: evita OOM su M1 base.
     # Con N_VALS=(3,5,7,10) non dovrebbe scattare.
-    if len(jobs) > 25:
-        return {
-            "status": 9,
-            "runtime": time_limit,
-            "objective": None,
-            "servers_used": None,
-            "fireups": None,
-            "num_vars": None,
-            "num_constrs": None,
-        }
+    #if len(jobs) > 25:
+    #    return {
+    #        "status": 9,
+    #        "runtime": time_limit,
+    #        "objective": None,
+    #        "servers_used": None,
+    #        "fireups": None,
+    #        "num_vars": None,
+    #        "num_constrs": None,
+    #    }
     return solve_model1(
         jobs=jobs,
         C=C,
@@ -453,7 +453,7 @@ def main():
     # Parametri ridotti per confronto testa-a-testa.
     # Se vuoi replicare più fedelmente il paper, usa (50, 100, 150, 200),
     # ma con M1 base diventa facilmente pesante.
-    N_VALS = ( 3, 5, 7)
+    N_VALS = ( 25, 50, 75, 100 ) 
     NUM_INST = 5
     TIME_LIM = 900
 

@@ -199,9 +199,9 @@ def run_scalability_testbedB_optimized(
     output_dir=BASE_OUTPUT_DIR,
     C=100,
     gamma=1.0,
-    T_values=(3, 5, 6,),
-    classes=("I", "II", "III",),
-    num_instances=3,
+    T_values=(5, 10, 15, 20, 25, 30),
+    classes=("I", "III", "V", "VI", "IX"),
+    num_instances=5,
     first_seed=42,
     time_limit=900,
 ):

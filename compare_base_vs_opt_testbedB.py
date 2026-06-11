@@ -527,9 +527,9 @@ def main():
     # Parametri prudenti.
     # Il Testbed B può generare più job di quanto ti aspetti, soprattutto
     # nelle classi VIII, IX, X oppure con |T| grande.
-    T_VALS = (3,5,6)  # Valori più piccoli per evitare istanze troppo grandi
-    CLASSES = ("I", "II", "III",)
-    INSTANCES_PER_CLASS = 3
+    T_VALS = (5,10,15,20,25,30)  
+    CLASSES = ("I", "III", "V", "VI", "IX")
+    INSTANCES_PER_CLASS = 5
     TIME_LIM = 900
 
     os.makedirs(BASE_OUTPUT_DIR, exist_ok=True)
