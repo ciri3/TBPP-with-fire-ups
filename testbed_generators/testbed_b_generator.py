@@ -72,8 +72,9 @@ class TestbedBGenerator:
                 f"Classi valide: {self.CLASS_ORDER}"
             )
 
-        if T_size <= 0:
-            raise ValueError("T_size deve essere positivo.")
+        #if T_size <= 0:
+        if T_size < 2:
+            raise ValueError("T_size deve essere maggiore di uno.")
 
         params = self.CLASS_PARAMS[class_name]
 
@@ -83,7 +84,7 @@ class TestbedBGenerator:
         next_job_id = 0
         previous_active: List[int] = []
 
-        for t in range(T_size):
+        for t in range(T_size-1):
             num_active = self.rng.randint(params.a_min, params.a_max)
 
             if t == 0:
