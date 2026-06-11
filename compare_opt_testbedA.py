@@ -6,34 +6,35 @@ import statistics
 import matplotlib.pyplot as plt
 
 from testbed_generators.testbed_a_generator import generate_jobs
-
-# --- Import Modelli Ottimizzati ---
 from modello1.model1_optimized_tbpp_fu import solve_model1_optimized
 from modello2.model2_optimized_tbpp_fu import solve_model2_optimized
 from modello3.model3_optimized_tbpp_fu import solve_model3_optimized
 
 
-# Tutti gli output verranno creati dentro questa cartella:
+# ============================================================
+# Scalability test - Testbed A del paper
+# Confronto unico tra M1, M2, M3 ottimizzati
+# Output richiesto:
+#     scalabilityTests/confronto_modelli_opt
+# ============================================================
+
 BASE_OUTPUT_DIR = os.path.join("scalabilityTests", "confronto_modelli_opt")
 
 
-# =====================================================================
-# FUNZIONI DI SUPPORTO
-# =====================================================================
+# ============================================================
+# Funzioni di supporto
+# ============================================================
 
 def safe_runtime(result, time_limit):
     """
-    Runtime da usare nelle medie.
+    Runtime usato nelle medie.
 
     Gurobi status:
     2 = OPTIMAL
     9 = TIME_LIMIT
 
-    Se il modello va in time limit uso il runtime restituito dal modello;
-    se manca, uso direttamente time_limit.
-
-    Per status diversi da OPTIMAL/TIME_LIMIT uso time_limit, così il run
-    viene penalizzato invece di sparire dalle medie.
+    Se il modello va in time limit, uso comunque il runtime restituito
+    dal modello; se manca, uso direttamente time_limit.
     """
     status = result.get("status")
     if status in [2, 9]:
@@ -43,8 +44,8 @@ def safe_runtime(result, time_limit):
 
 def safe_stat(result, possible_keys):
     """
-    Cerca una statistica nel dizionario risultato usando più possibili nomi.
-    Serve perché i solve_model possono usare chiavi diverse.
+    Legge una statistica dal dizionario risultato usando nomi alternativi.
+    Serve perché i diversi solve_model possono restituire chiavi con nomi diversi.
     """
     for key in possible_keys:
         if key in result:
@@ -54,17 +55,16 @@ def safe_stat(result, possible_keys):
 
 def run_model(model_name, model_function, jobs, C, gamma, time_limit):
     """
-    Esegue un singolo modello ottimizzato su una singola istanza.
+    Esegue un singolo modello su una singola istanza.
 
-    Salva:
-    - status Gurobi
-    - objective
-    - runtime Gurobi
-    - wall_time Python
-    - server usati
-    - fire-up
-    - numero variabili
-    - numero vincoli
+    Oltre al runtime, prova a leggere:
+    - num_vars: numero di variabili del modello Gurobi
+    - num_constrs: numero di vincoli del modello Gurobi
+
+    ATTENZIONE: questi valori compaiono solo se i file dei modelli
+    restituiscono nel return finale:
+        "num_vars": model.NumVars,
+        "num_constrs": model.NumConstrs,
     """
     wall_start = time.time()
 
@@ -95,21 +95,19 @@ def run_model(model_name, model_function, jobs, C, gamma, time_limit):
 def save_csv(path, rows):
     if not rows:
         return
-
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-
     with open(path, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=list(rows[0].keys()))
         writer.writeheader()
         writer.writerows(rows)
 
 
-def make_runtime_plot(n_values, n_rows, dict_models, graph_png, title):
-    plt.figure(figsize=(9, 6))
-    markers = ["o", "s", "^", "x", "D", "*"]
-    linestyles = ["-", "--", "-.", ":", "-", "--"]
+def make_runtime_plot(n_values, n_rows, models, graph_png):
+    plt.figure(figsize=(10, 6))
 
-    for idx, model_name in enumerate(dict_models):
+    markers = ["o", "s", "^"]
+    linestyles = ["-", "--", "-."]
+
+    for idx, model_name in enumerate(models):
         y = []
         for n in n_values:
             match = [r for r in n_rows if r["n"] == n and r["model"] == model_name]
@@ -124,7 +122,7 @@ def make_runtime_plot(n_values, n_rows, dict_models, graph_png, title):
             label=model_name,
         )
 
-    plt.title(title)
+    plt.title("Testbed A - confronto modelli ottimizzati - runtime medio")
     plt.xlabel("Numero di job n")
     plt.ylabel("Tempo medio di soluzione [s]")
     plt.xticks(list(n_values))
@@ -135,31 +133,31 @@ def make_runtime_plot(n_values, n_rows, dict_models, graph_png, title):
     plt.close()
 
 
-def make_model_size_plot(n_values, n_rows, dict_models, graph_png, metric, ylabel, title):
+def make_model_size_plot(n_values, n_rows, models, graph_png, metric, ylabel, title):
     """
-    Crea un grafico per variabili oppure vincoli.
+    Crea il grafico di variabili oppure vincoli.
 
-    Se un modello non ha valori disponibili, viene saltato.
-    Se meno di due modelli hanno valori disponibili, il grafico non viene creato.
+    Se un modello non restituisce la statistica richiesta, la sua linea viene saltata.
+    Se meno di due modelli hanno dati disponibili, il grafico non viene creato.
     """
-    plt.figure(figsize=(9, 6))
-    markers = ["o", "s", "^", "x", "D", "*"]
-    linestyles = ["-", "--", "-.", ":", "-", "--"]
+    plt.figure(figsize=(10, 6))
 
+    markers = ["o", "s", "^"]
+    linestyles = ["-", "--", "-."]
     plotted_models = 0
 
-    for idx, model_name in enumerate(dict_models):
+    for idx, model_name in enumerate(models):
         y = []
-        has_at_least_one_value = False
+        has_value = False
 
         for n in n_values:
             match = [r for r in n_rows if r["n"] == n and r["model"] == model_name]
             value = match[0][metric] if match else None
             y.append(value)
             if value is not None:
-                has_at_least_one_value = True
+                has_value = True
 
-        if not has_at_least_one_value:
+        if not has_value:
             print(f"ATTENZIONE: {metric} non disponibile per {model_name}. Linea saltata.")
             continue
 
@@ -193,34 +191,36 @@ def make_model_size_plot(n_values, n_rows, dict_models, graph_png, metric, ylabe
     return True
 
 
-# =====================================================================
-# ESPERIMENTO: CONFRONTO TRA I TRE MODELLI OTTIMIZZATI
-# =====================================================================
+# ============================================================
+# Esperimento principale
+# ============================================================
 
-def run_optimized_models_comparison(
-    comparison_name,
-    dict_models,
-    output_dir,
+def run_scalability_testbedA_optimized(
+    output_dir=BASE_OUTPUT_DIR,
     C=100,
     gamma=1.0,
-    n_values=(50, 100, 150, 200),
+    n_values=(7, 10, 13, 15),
     s_factors=(1.0, 1.2),
     durations=("short", "long"),
     sizes=("low", "high"),
     num_instances=5,
     first_seed=42,
-    time_limit=1800,
+    time_limit=900,
 ):
     """
-    Esegue il Testbed A confrontando i tre modelli ottimizzati.
+    Confronta in un unico esperimento i tre modelli ottimizzati.
 
-    Produce dentro output_dir:
-    - detailed.csv: una riga per ogni istanza e modello
-    - group_means.csv: media per gruppo Testbed A
-    - n_means.csv: media aggregata per numero di job n
-    - scalability_runtime.png: grafico runtime medio
-    - scalability_num_vars.png: grafico numero medio variabili, se disponibile
-    - scalability_num_constrs.png: grafico numero medio vincoli, se disponibile
+    Produce dentro scalabilityTests/confronto_modelli_opt:
+    - detailed.csv
+    - group_means.csv
+    - n_means.csv
+    - scalability_runtime.png
+    - scalability_num_vars.png, se i modelli restituiscono num_vars
+    - scalability_num_constrs.png, se i modelli restituiscono num_constrs
+
+    Per replicare il Testbed A completo del paper, puoi impostare:
+        n_values=(50, 100, 150, 200)
+        time_limit=1800
     """
     os.makedirs(output_dir, exist_ok=True)
 
@@ -232,32 +232,36 @@ def run_optimized_models_comparison(
     vars_png = os.path.join(output_dir, "scalability_num_vars.png")
     constrs_png = os.path.join(output_dir, "scalability_num_constrs.png")
 
+    models = {
+        "M1 Opt": solve_model1_optimized,
+        "M2 Opt": solve_model2_optimized,
+        "M3 Opt": solve_model3_optimized,
+    }
+
     groups = list(itertools.product(n_values, s_factors, durations, sizes))
     detailed_rows = []
     group_rows = []
 
-    print(f"\n{'=' * 80}")
-    print(f"AVVIO CONFRONTO: {comparison_name.upper()}")
+    print("=" * 70)
+    print("SCALABILITY TEST - TESTBED A - CONFRONTO MODELLI OTTIMIZZATI")
+    print("=" * 70)
     print(f"Output dir: {output_dir}")
-    print(f"n_values: {n_values}")
-    print(f"s_factors: {s_factors}")
-    print(f"durations: {durations}")
-    print(f"sizes: {sizes}")
-    print(f"num_instances per gruppo: {num_instances}")
-    print(f"time_limit: {time_limit} s")
-    print(f"{'=' * 80}")
+    print(f"Gruppi: {len(groups)}")
+    print(f"Istanze per gruppo: {num_instances}")
+    print(f"Time limit per modello/istanza: {time_limit} s")
+    print("=" * 70)
 
     global_start = time.time()
 
     for n, s_factor, duration_type, size_type in groups:
-        print(f"--- Gruppo: n={n}, s={s_factor}, dur={duration_type}, size={size_type} ---")
+        print(f"\n--- Gruppo: n={n}, s_factor={s_factor}, duration={duration_type}, size={size_type} ---")
 
-        group_times = {m: [] for m in dict_models}
-        group_vars = {m: [] for m in dict_models}
-        group_constrs = {m: [] for m in dict_models}
-        group_optimal_count = {m: 0 for m in dict_models}
-        group_timelimit_count = {m: 0 for m in dict_models}
-        group_other_status_count = {m: 0 for m in dict_models}
+        group_times = {m: [] for m in models}
+        group_vars = {m: [] for m in models}
+        group_constrs = {m: [] for m in models}
+        group_optimal_count = {m: 0 for m in models}
+        group_timelimit_count = {m: 0 for m in models}
+        group_other_status_count = {m: 0 for m in models}
 
         for seed in range(first_seed, first_seed + num_instances):
             jobs = generate_jobs(
@@ -269,7 +273,7 @@ def run_optimized_models_comparison(
                 seed=seed,
             )
 
-            for model_name, model_function in dict_models.items():
+            for model_name, model_function in models.items():
                 res = run_model(model_name, model_function, jobs, C, gamma, time_limit)
 
                 group_times[model_name].append(res["runtime"])
@@ -303,7 +307,7 @@ def run_optimized_models_comparison(
                     "num_constrs": res["num_constrs"],
                 })
 
-        for model_name in dict_models:
+        for model_name in models:
             avg_time = statistics.mean(group_times[model_name])
             avg_vars = statistics.mean(group_vars[model_name]) if group_vars[model_name] else None
             avg_constrs = statistics.mean(group_constrs[model_name]) if group_constrs[model_name] else None
@@ -324,26 +328,25 @@ def run_optimized_models_comparison(
             })
 
             print(
-                f"{model_name:<10} | "
+                f"{model_name:<8} | "
                 f"mean runtime = {avg_time:8.3f} s | "
                 f"vars = {avg_vars if avg_vars is not None else 'NA'} | "
                 f"constrs = {avg_constrs if avg_constrs is not None else 'NA'} | "
                 f"opt = {group_optimal_count[model_name]}/{num_instances} | "
-                f"TL = {group_timelimit_count[model_name]}/{num_instances} | "
-                f"other = {group_other_status_count[model_name]}/{num_instances}"
+                f"TL = {group_timelimit_count[model_name]}/{num_instances}"
             )
-        print()
 
-        # Salvataggio progressivo, utile se interrompi l'esecuzione
+        # Salvataggio progressivo: utile se interrompi il run.
         save_csv(detailed_csv, detailed_rows)
         save_csv(group_csv, group_rows)
 
-    # -----------------------------------------------------------------
-    # Aggregazione per n: scalabilità rispetto al numero di job
-    # -----------------------------------------------------------------
+    # ------------------------------------------------------------
+    # Aggregazione per numero di job n
+    # ------------------------------------------------------------
     n_rows = []
+
     for n in n_values:
-        for model_name in dict_models:
+        for model_name in models:
             subset = [r for r in detailed_rows if r["n"] == n and r["model"] == model_name]
             runtimes = [r["runtime"] for r in subset]
             statuses = [r["status"] for r in subset]
@@ -370,90 +373,62 @@ def run_optimized_models_comparison(
     save_csv(group_csv, group_rows)
     save_csv(n_csv, n_rows)
 
-    # -----------------------------------------------------------------
+    # ------------------------------------------------------------
     # Grafici finali
-    # -----------------------------------------------------------------
+    # ------------------------------------------------------------
     make_runtime_plot(
         n_values=n_values,
         n_rows=n_rows,
-        dict_models=dict_models,
+        models=models,
         graph_png=runtime_png,
-        title=f"Testbed A - {comparison_name} - runtime medio",
     )
 
     make_model_size_plot(
         n_values=n_values,
         n_rows=n_rows,
-        dict_models=dict_models,
+        models=models,
         graph_png=vars_png,
         metric="mean_num_vars",
         ylabel="Numero medio di variabili",
-        title=f"Testbed A - {comparison_name} - variabili create",
+        title="Testbed A - confronto modelli ottimizzati - variabili create",
     )
 
     make_model_size_plot(
         n_values=n_values,
         n_rows=n_rows,
-        dict_models=dict_models,
+        models=models,
         graph_png=constrs_png,
         metric="mean_num_constrs",
         ylabel="Numero medio di vincoli",
-        title=f"Testbed A - {comparison_name} - vincoli creati",
+        title="Testbed A - confronto modelli ottimizzati - vincoli creati",
     )
 
-    print(f"Confronto completato in {(time.time() - global_start) / 60:.1f} min")
-    print(f"Dati e grafici salvati in: {output_dir}")
+    total_minutes = (time.time() - global_start) / 60
 
-
-# =====================================================================
-# MAIN
-# =====================================================================
-
-def main():
-    # Parametri coerenti con il file testa-a-testa che stavi usando.
-    # Per replicare più fedelmente il paper puoi impostare:
-    # N_VALS = (50, 100, 150, 200)
-    # TIME_LIM = 1800
-    N_VALS = (10, 12, 15, 17)
-    NUM_INST = 5
-    TIME_LIM = 900
-
-    os.makedirs(BASE_OUTPUT_DIR, exist_ok=True)
-
-    run_optimized_models_comparison(
-        comparison_name="Confronto modelli ottimizzati",
-        dict_models={
-            "M1 Opt": solve_model1_optimized,
-            "M2 Opt": solve_model2_optimized,
-            "M3 Opt": solve_model3_optimized,
-        },
-        output_dir=BASE_OUTPUT_DIR,
-        n_values=N_VALS,
-        num_instances=NUM_INST,
-        time_limit=TIME_LIM,
-    )
-
-    print("\nCONFRONTO TRA I TRE MODELLI OTTIMIZZATI COMPLETATO!")
-    print(f"Cartella risultati: {BASE_OUTPUT_DIR}")
+    print("\n" + "=" * 70)
+    print(f"TEST COMPLETATO IN {total_minutes:.1f} MINUTI")
+    print(f"CSV dettagliato:       {detailed_csv}")
+    print(f"CSV medie per gruppo:  {group_csv}")
+    print(f"CSV medie per n:       {n_csv}")
+    print(f"Grafico runtime:       {runtime_png}")
+    print(f"Grafico variabili:     {vars_png}")
+    print(f"Grafico vincoli:       {constrs_png}")
+    print("=" * 70)
 
 
 if __name__ == "__main__":
-    main()
+    run_scalability_testbedA_optimized()
 
 
-# =====================================================================
-# NOTA IMPORTANTE SULLE STATISTICHE DEL MODELLO
-# =====================================================================
-# Per creare i grafici su variabili e vincoli, ogni solve_model ottimizzato
-# deve restituire nel dizionario finale anche queste chiavi:
+# ============================================================
+# NOTA IMPORTANTE
+# ============================================================
+# Se i grafici scalability_num_vars.png e scalability_num_constrs.png
+# non vengono creati, significa che almeno due dei tre solve_model ottimizzati
+# NON restituiscono ancora:
 #
 #     "num_vars": model.NumVars,
 #     "num_constrs": model.NumConstrs,
 #
-# Queste righe vanno aggiunte dentro ogni file modello, dopo model.optimize()
-# e prima del return finale.
-#
-# Se queste chiavi mancano in uno dei tre modelli, il CSV viene comunque
-# creato, ma il grafico variabili/vincoli viene creato solo per i modelli
-# che restituiscono quei dati.
-# =====================================================================
+# dentro il dizionario finale del return.
+# ============================================================
