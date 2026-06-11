@@ -8,8 +8,15 @@ Importa invece la classe TestbedBGenerator dal file separato:
 
 Output generati:
     results_testbedB_reduced/testbedB_results.csv
-    results_testbedB_reduced/testbedB_scalability_runtime.png
-    results_testbedB_reduced/testbedB_scalability_optimal_only.png
+    results_testbedB_reduced/testbedB_scalability_runtime_by_job_bins.png
+    results_testbedB_reduced/testbedB_scalability_optimal_only_by_job_bins.png
+
+Differenza rispetto alla versione precedente:
+    i grafici NON raggruppano più per T_size.
+    I runtime vengono raggruppati per fasce di numero di job generati.
+
+Esempio con job_bin_size = 10:
+    10-19 job, 20-29 job, 30-39 job, ecc.
 """
 
 import os
@@ -42,6 +49,7 @@ class TestbedBScalabilityTest:
         time_limit: int = 1800,
         output_dir: str = "results_testbedB_reduced",
         base_seed: int = 42,
+        job_bin_size: int = 10,
     ):
         self.T_values = T_values
         self.classes = classes if classes is not None else list(TestbedBGenerator.CLASS_ORDER)
@@ -51,12 +59,19 @@ class TestbedBScalabilityTest:
         self.time_limit = time_limit
         self.output_dir = output_dir
         self.base_seed = base_seed
+        self.job_bin_size = job_bin_size
 
         os.makedirs(self.output_dir, exist_ok=True)
 
         self.csv_path = os.path.join(self.output_dir, "testbedB_results.csv")
-        self.plot_all_path = os.path.join(self.output_dir, "testbedB_scalability_runtime.png")
-        self.plot_optimal_path = os.path.join(self.output_dir, "testbedB_scalability_optimal_only.png")
+        self.plot_all_path = os.path.join(
+            self.output_dir,
+            "testbedB_scalability_runtime_by_job_bins.png",
+        )
+        self.plot_optimal_path = os.path.join(
+            self.output_dir,
+            "testbedB_scalability_optimal_only_by_job_bins.png",
+        )
 
         self.models: Dict[str, Solver] = {
             "M1 reduced": solve_model1_optimized,
@@ -75,6 +90,9 @@ class TestbedBScalabilityTest:
 
         if self.instances_per_class <= 0:
             raise ValueError("instances_per_class deve essere positivo.")
+
+        if self.job_bin_size <= 0:
+            raise ValueError("job_bin_size deve essere positivo.")
 
         valid_classes = set(TestbedBGenerator.CLASS_PARAMS.keys())
         for class_name in self.classes:
@@ -104,6 +122,7 @@ class TestbedBScalabilityTest:
         print(f"C: {self.C}")
         print(f"gamma: {self.gamma}")
         print(f"Time limit per modello/istanza: {self.time_limit} s")
+        print(f"Job bin size per grafici: {self.job_bin_size}")
         print(f"Output dir: {self.output_dir}")
         print("=" * 80)
 
@@ -129,6 +148,7 @@ class TestbedBScalabilityTest:
                             "instance_id": instance_id,
                             "seed": seed,
                             "n_jobs": n_jobs,
+                            "job_bin": self._job_bin_label(n_jobs),
                             "model": model_name,
                             "runtime": result["runtime"],
                             "status": result["status"],
@@ -167,7 +187,7 @@ class TestbedBScalabilityTest:
                 C=self.C,
                 gamma=self.gamma,
                 time_limit=self.time_limit,
-                verbose=False
+                verbose=False,
             )
 
             elapsed = time.perf_counter() - start
@@ -211,6 +231,36 @@ class TestbedBScalabilityTest:
             return True
         return False
 
+    def _job_bin_bounds(self, n_jobs: int) -> Tuple[int, int]:
+        """
+        Restituisce gli estremi della fascia di job.
+
+        Esempio con job_bin_size = 10:
+            n_jobs = 19 -> (10, 19)
+            n_jobs = 24 -> (20, 29)
+            n_jobs = 70 -> (70, 79)
+        """
+        lower = (n_jobs // self.job_bin_size) * self.job_bin_size
+        upper = lower + self.job_bin_size - 1
+        return lower, upper
+
+    def _job_bin_center_from_lower(self, lower: int) -> int:
+        upper = lower + self.job_bin_size - 1
+        return (lower + upper) // 2
+
+    def _job_bin_center(self, n_jobs: int) -> int:
+        lower, _ = self._job_bin_bounds(n_jobs)
+        return self._job_bin_center_from_lower(lower)
+
+    def _job_bin_label_from_center(self, bin_center: int) -> str:
+        lower = (bin_center // self.job_bin_size) * self.job_bin_size
+        upper = lower + self.job_bin_size - 1
+        return f"{lower}-{upper}"
+
+    def _job_bin_label(self, n_jobs: int) -> str:
+        lower, upper = self._job_bin_bounds(n_jobs)
+        return f"{lower}-{upper}"
+
     def _save_csv(self, rows: List[Dict[str, Any]]) -> None:
         if not rows:
             return
@@ -221,6 +271,7 @@ class TestbedBScalabilityTest:
             "instance_id",
             "seed",
             "n_jobs",
+            "job_bin",
             "model",
             "runtime",
             "status",
@@ -234,21 +285,38 @@ class TestbedBScalabilityTest:
             writer.writeheader()
             writer.writerows(rows)
 
-    def _group_by_T_and_model(
+    def _group_by_job_bin_and_model(
         self,
         rows: List[Dict[str, Any]],
         optimal_only: bool = False,
     ) -> Dict[Tuple[int, str], Dict[str, List[float]]]:
+        """
+        Raggruppa i risultati per fascia di n_jobs e modello.
+
+        Nota importante:
+        - Prima il codice raggruppava per T_size e modello.
+        - Ora raggruppa per fascia di numero di job e modello.
+        """
         grouped: Dict[Tuple[int, str], Dict[str, List[float]]] = {}
 
         for row in rows:
             if optimal_only and not row["optimal"]:
                 continue
 
-            key = (int(row["T_size"]), str(row["model"]))
-            grouped.setdefault(key, {"runtimes": [], "n_jobs": []})
+            n_jobs = int(row["n_jobs"])
+            bin_center = self._job_bin_center(n_jobs)
+            model = str(row["model"])
+            key = (bin_center, model)
+
+            grouped.setdefault(
+                key,
+                {
+                    "runtimes": [],
+                    "n_jobs": [],
+                },
+            )
             grouped[key]["runtimes"].append(float(row["runtime"]))
-            grouped[key]["n_jobs"].append(int(row["n_jobs"]))
+            grouped[key]["n_jobs"].append(n_jobs)
 
         return grouped
 
@@ -261,14 +329,14 @@ class TestbedBScalabilityTest:
         self._plot(
             rows=rows,
             output_path=self.plot_all_path,
-            title="Scalability test - Testbed B - modelli ridotti",
+            title="Scalability test - Testbed B - modelli ridotti - tutte le run",
             optimal_only=False,
         )
 
     def _plot_optimal_only(self, rows: List[Dict[str, Any]]) -> None:
         """
         Grafico secondario: usa solo le run risolte a ottimalità.
-        Utile se vuoi confrontarti con tabelle in cui i time limit vengono esclusi.
+        Le run in time limit o errore vengono escluse dalla media.
         """
         self._plot(
             rows=rows,
@@ -284,34 +352,52 @@ class TestbedBScalabilityTest:
         title: str,
         optimal_only: bool,
     ) -> None:
-        grouped = self._group_by_T_and_model(rows, optimal_only=optimal_only)
+        grouped = self._group_by_job_bin_and_model(
+            rows=rows,
+            optimal_only=optimal_only,
+        )
         models = list(self.models.keys())
 
         plt.figure(figsize=(10, 6))
+
+        all_bin_centers = sorted({key[0] for key in grouped.keys()})
 
         for model in models:
             xs = []
             ys = []
 
-            for T_size in sorted(self.T_values):
-                key = (T_size, model)
+            model_bin_centers = sorted({
+                key[0]
+                for key in grouped.keys()
+                if key[1] == model
+            })
+
+            for bin_center in model_bin_centers:
+                key = (bin_center, model)
                 if key not in grouped or not grouped[key]["runtimes"]:
                     continue
 
-                mean_n_jobs = statistics.mean(grouped[key]["n_jobs"])
                 mean_runtime = statistics.mean(grouped[key]["runtimes"])
 
-                xs.append(mean_n_jobs)
+                xs.append(bin_center)
                 ys.append(mean_runtime)
 
             if xs and ys:
                 plt.plot(xs, ys, marker="o", label=model)
 
-        plt.xlabel("Numero medio di job generati")
+        plt.xlabel(f"Numero di job generati - fasce da {self.job_bin_size}")
         plt.ylabel("Runtime medio [s]")
         plt.title(title)
         plt.grid(True)
         plt.legend()
+
+        if all_bin_centers:
+            plt.xticks(
+                all_bin_centers,
+                [self._job_bin_label_from_center(x) for x in all_bin_centers],
+                rotation=45,
+            )
+
         plt.tight_layout()
         plt.savefig(output_path, dpi=300)
         plt.close()
@@ -323,12 +409,13 @@ if __name__ == "__main__":
     # T_values=[10, 15, 20, 30, 40, 50, 60]
     # instances_per_class=10
     test = TestbedBScalabilityTest(
-        T_values=[10, 15],
+        T_values=[3, 5, 10, 15],
         classes=["I", "III", "V"],
         instances_per_class=3,
-        time_limit=1800,
+        time_limit=900,
         output_dir="results_testbedB_reduced",
         base_seed=42,
+        job_bin_size=10,
     )
 
     test.run()
