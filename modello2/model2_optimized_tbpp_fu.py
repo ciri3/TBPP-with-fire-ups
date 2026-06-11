@@ -246,6 +246,8 @@ def solve_model2_optimized(jobs, C, gamma=1.0, time_limit=None, verbose=True):
         "n_constraints": model.NumConstrs,
         "nnz": model.NumNZs,
         "model": model,
+        "num_vars": model.NumVars,
+        "num_constrs": model.NumConstrs,
     }
 
     if model.SolCount == 0:

@@ -298,6 +298,8 @@ def solve_model1_optimized(
         "runtime": model.Runtime,
         "gap": None,
         "model": model,
+        "num_vars": model.NumVars,
+        "num_constrs": model.NumConstrs,
     }
 
     if model.Status in [GRB.OPTIMAL, GRB.TIME_LIMIT, GRB.SUBOPTIMAL]:

@@ -246,7 +246,9 @@ def solve_model1(jobs, C, gamma=1.0, time_limit=None, verbose=True, binary_w=Tru
         "server_jobs": server_jobs,
         "T": T,
         "TS": TS,
-        "model": model
+        "model": model,
+        "num_vars": model.NumVars,
+        "num_constrs": model.NumConstrs
     }
 
     return result

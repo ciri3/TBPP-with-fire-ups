@@ -154,6 +154,8 @@ def solve_model2(jobs, C, gamma=1.0, time_limit=None, verbose=True, binary_w=Tru
         "assignment": {},
         "fireup_times": {},
         "model": model,
+        "num_vars": model.NumVars,
+        "num_constrs": model.NumConstrs,
     }
 
     if model.SolCount == 0:

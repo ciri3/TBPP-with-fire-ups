@@ -317,6 +317,8 @@ def solve_model3_optimized(
         "Delta_red_size": len(Delta_red),
         "Delta_red_nd_size": len(Delta_red_nd),
         "model": model,
+        "num_vars": model.NumVars,
+        "num_constrs": model.NumConstrs,
     }
 
     if model.Status in [GRB.OPTIMAL, GRB.TIME_LIMIT, GRB.SUBOPTIMAL]:

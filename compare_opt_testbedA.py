@@ -7,11 +7,6 @@ import matplotlib.pyplot as plt
 
 from testbed_generators.testbed_a_generator import generate_jobs
 
-# --- Import Modelli Base ---
-from modello1.model1_tbpp_fu import solve_model1
-from modello2.model2_tbpp_fu import solve_model2
-from modello3.model3_tbpp_fu import solve_model3
-
 # --- Import Modelli Ottimizzati ---
 from modello1.model1_optimized_tbpp_fu import solve_model1_optimized
 from modello2.model2_optimized_tbpp_fu import solve_model2_optimized
@@ -19,7 +14,7 @@ from modello3.model3_optimized_tbpp_fu import solve_model3_optimized
 
 
 # Tutti gli output verranno creati dentro questa cartella:
-BASE_OUTPUT_DIR = os.path.join("scalabilityTests", "TestaATesta")
+BASE_OUTPUT_DIR = os.path.join("scalabilityTests", "confronto_modelli_opt")
 
 
 # =====================================================================
@@ -34,8 +29,11 @@ def safe_runtime(result, time_limit):
     2 = OPTIMAL
     9 = TIME_LIMIT
 
-    Se il modello va in time limit uso il runtime restituito dal modello,
-    se manca uso direttamente time_limit.
+    Se il modello va in time limit uso il runtime restituito dal modello;
+    se manca, uso direttamente time_limit.
+
+    Per status diversi da OPTIMAL/TIME_LIMIT uso time_limit, così il run
+    viene penalizzato invece di sparire dalle medie.
     """
     status = result.get("status")
     if status in [2, 9]:
@@ -46,7 +44,7 @@ def safe_runtime(result, time_limit):
 def safe_stat(result, possible_keys):
     """
     Cerca una statistica nel dizionario risultato usando più possibili nomi.
-    Serve perché i tuoi solve_model possono usare chiavi diverse.
+    Serve perché i solve_model possono usare chiavi diverse.
     """
     for key in possible_keys:
         if key in result:
@@ -56,15 +54,20 @@ def safe_stat(result, possible_keys):
 
 def run_model(model_name, model_function, jobs, C, gamma, time_limit):
     """
-    Esegue un singolo modello su una singola istanza.
+    Esegue un singolo modello ottimizzato su una singola istanza.
 
-    Oltre al tempo, legge anche:
-    - num_vars: numero di variabili create nel modello Gurobi
-    - num_constrs: numero di vincoli creati nel modello Gurobi
-
-    Questi valori vengono salvati solo se le funzioni solve_modelX li restituiscono.
+    Salva:
+    - status Gurobi
+    - objective
+    - runtime Gurobi
+    - wall_time Python
+    - server usati
+    - fire-up
+    - numero variabili
+    - numero vincoli
     """
     wall_start = time.time()
+
     result = model_function(
         jobs=jobs,
         C=C,
@@ -72,6 +75,7 @@ def run_model(model_name, model_function, jobs, C, gamma, time_limit):
         time_limit=time_limit,
         verbose=False,
     )
+
     wall_time = time.time() - wall_start
     gurobi_time = safe_runtime(result, time_limit)
 
@@ -91,6 +95,9 @@ def run_model(model_name, model_function, jobs, C, gamma, time_limit):
 def save_csv(path, rows):
     if not rows:
         return
+
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+
     with open(path, "w", newline="", encoding="utf-8") as f:
         writer = csv.DictWriter(f, fieldnames=list(rows[0].keys()))
         writer.writeheader()
@@ -133,8 +140,7 @@ def make_model_size_plot(n_values, n_rows, dict_models, graph_png, metric, ylabe
     Crea un grafico per variabili oppure vincoli.
 
     Se un modello non ha valori disponibili, viene saltato.
-    Se meno di due modelli hanno valori disponibili, il grafico non viene creato:
-    così evitiamo grafici con una sola linea che possono trarre in inganno.
+    Se meno di due modelli hanno valori disponibili, il grafico non viene creato.
     """
     plt.figure(figsize=(9, 6))
     markers = ["o", "s", "^", "x", "D", "*"]
@@ -188,10 +194,10 @@ def make_model_size_plot(n_values, n_rows, dict_models, graph_png, metric, ylabe
 
 
 # =====================================================================
-# ESPERIMENTO HEAD-TO-HEAD
+# ESPERIMENTO: CONFRONTO TRA I TRE MODELLI OTTIMIZZATI
 # =====================================================================
 
-def run_head_to_head_comparison(
+def run_optimized_models_comparison(
     comparison_name,
     dict_models,
     output_dir,
@@ -206,15 +212,15 @@ def run_head_to_head_comparison(
     time_limit=1800,
 ):
     """
-    Esegue il Testbed A confrontando esattamente i modelli passati in dict_models.
+    Esegue il Testbed A confrontando i tre modelli ottimizzati.
 
     Produce dentro output_dir:
     - detailed.csv: una riga per ogni istanza e modello
     - group_means.csv: media per gruppo Testbed A
     - n_means.csv: media aggregata per numero di job n
     - scalability_runtime.png: grafico runtime medio
-    - scalability_num_vars.png: grafico numero medio variabili, se disponibile per entrambi i modelli
-    - scalability_num_constrs.png: grafico numero medio vincoli, se disponibile per entrambi i modelli
+    - scalability_num_vars.png: grafico numero medio variabili, se disponibile
+    - scalability_num_constrs.png: grafico numero medio vincoli, se disponibile
     """
     os.makedirs(output_dir, exist_ok=True)
 
@@ -230,10 +236,16 @@ def run_head_to_head_comparison(
     detailed_rows = []
     group_rows = []
 
-    print(f"\n{'=' * 70}")
-    print(f"AVVIO SFIDA: {comparison_name.upper()}")
+    print(f"\n{'=' * 80}")
+    print(f"AVVIO CONFRONTO: {comparison_name.upper()}")
     print(f"Output dir: {output_dir}")
-    print(f"{'=' * 70}")
+    print(f"n_values: {n_values}")
+    print(f"s_factors: {s_factors}")
+    print(f"durations: {durations}")
+    print(f"sizes: {sizes}")
+    print(f"num_instances per gruppo: {num_instances}")
+    print(f"time_limit: {time_limit} s")
+    print(f"{'=' * 80}")
 
     global_start = time.time()
 
@@ -312,12 +324,13 @@ def run_head_to_head_comparison(
             })
 
             print(
-                f"{model_name:<15} | "
+                f"{model_name:<10} | "
                 f"mean runtime = {avg_time:8.3f} s | "
                 f"vars = {avg_vars if avg_vars is not None else 'NA'} | "
                 f"constrs = {avg_constrs if avg_constrs is not None else 'NA'} | "
                 f"opt = {group_optimal_count[model_name]}/{num_instances} | "
-                f"TL = {group_timelimit_count[model_name]}/{num_instances}"
+                f"TL = {group_timelimit_count[model_name]}/{num_instances} | "
+                f"other = {group_other_status_count[model_name]}/{num_instances}"
             )
         print()
 
@@ -326,7 +339,7 @@ def run_head_to_head_comparison(
         save_csv(group_csv, group_rows)
 
     # -----------------------------------------------------------------
-    # Aggregazione per n: qui si vede la scalabilità rispetto ai job
+    # Aggregazione per n: scalabilità rispetto al numero di job
     # -----------------------------------------------------------------
     n_rows = []
     for n in n_values:
@@ -388,56 +401,8 @@ def run_head_to_head_comparison(
         title=f"Testbed A - {comparison_name} - vincoli creati",
     )
 
-    print(f"Sfida completata in {(time.time() - global_start) / 60:.1f} min")
+    print(f"Confronto completato in {(time.time() - global_start) / 60:.1f} min")
     print(f"Dati e grafici salvati in: {output_dir}")
-
-
-# =====================================================================
-# WRAPPERS PER UNIFICARE LE FIRME DELLE FUNZIONI
-# =====================================================================
-
-def wrap_m1_base(jobs, C, gamma, time_limit, verbose):
-    # SALVAVITA: evita OOM su M1 base.
-    # Con N_VALS=(3,5,7,10) non dovrebbe scattare.
-    if len(jobs) > 25:
-        return {
-            "status": 9,
-            "runtime": time_limit,
-            "objective": None,
-            "servers_used": None,
-            "fireups": None,
-            "num_vars": None,
-            "num_constrs": None,
-        }
-    return solve_model1(
-        jobs=jobs,
-        C=C,
-        gamma=gamma,
-        time_limit=time_limit,
-        verbose=verbose,
-        binary_w=True,
-    )
-
-
-def wrap_m2_base(jobs, C, gamma, time_limit, verbose):
-    return solve_model2(
-        jobs=jobs,
-        C=C,
-        gamma=gamma,
-        time_limit=time_limit,
-        verbose=verbose,
-        binary_w=True,
-    )
-
-
-def wrap_m3_base(jobs, C, gamma, time_limit, verbose):
-    return solve_model3(
-        jobs=jobs,
-        C=C,
-        gamma=gamma,
-        time_limit=time_limit,
-        verbose=verbose,
-    )
 
 
 # =====================================================================
@@ -445,56 +410,31 @@ def wrap_m3_base(jobs, C, gamma, time_limit, verbose):
 # =====================================================================
 
 def main():
-    # Parametri ridotti per confronto testa-a-testa.
-    # Se vuoi replicare più fedelmente il paper, usa (50, 100, 150, 200),
-    # ma con M1 base diventa facilmente pesante.
-    N_VALS = ( 10, 12, 15, 17)
+    # Parametri coerenti con il file testa-a-testa che stavi usando.
+    # Per replicare più fedelmente il paper puoi impostare:
+    # N_VALS = (50, 100, 150, 200)
+    # TIME_LIM = 1800
+    N_VALS = (10, 12, 15, 17)
     NUM_INST = 5
     TIME_LIM = 900
 
     os.makedirs(BASE_OUTPUT_DIR, exist_ok=True)
 
-    # --- SFIDA 1: M1 Base vs M1 Opt ---
-    run_head_to_head_comparison(
-        comparison_name="Modello 1 (Base vs Ottimizzato)",
+    run_optimized_models_comparison(
+        comparison_name="Confronto modelli ottimizzati",
         dict_models={
-            "M1 Base": wrap_m1_base,
             "M1 Opt": solve_model1_optimized,
-        },
-        output_dir=os.path.join(BASE_OUTPUT_DIR, "results_testbedA_M1_vs_M1opt"),
-        n_values=N_VALS,
-        num_instances=NUM_INST,
-        time_limit=TIME_LIM,
-    )
-
-    # --- SFIDA 2: M2 Base vs M2 Opt ---
-    run_head_to_head_comparison(
-        comparison_name="Modello 2 (Base vs Ottimizzato)",
-        dict_models={
-            "M2 Base": wrap_m2_base,
             "M2 Opt": solve_model2_optimized,
-        },
-        output_dir=os.path.join(BASE_OUTPUT_DIR, "results_testbedA_M2_vs_M2opt"),
-        n_values=N_VALS,
-        num_instances=NUM_INST,
-        time_limit=TIME_LIM,
-    )
-
-    # --- SFIDA 3: M3 Base vs M3 Opt ---
-    run_head_to_head_comparison(
-        comparison_name="Modello 3 (Base vs Ottimizzato)",
-        dict_models={
-            "M3 Base": wrap_m3_base,
             "M3 Opt": solve_model3_optimized,
         },
-        output_dir=os.path.join(BASE_OUTPUT_DIR, "results_testbedA_M3_vs_M3opt"),
+        output_dir=BASE_OUTPUT_DIR,
         n_values=N_VALS,
         num_instances=NUM_INST,
         time_limit=TIME_LIM,
     )
 
-    print("\nTUTTI I CONFRONTI TESTA A TESTA SONO STATI COMPLETATI!")
-    print(f"Cartella principale risultati: {BASE_OUTPUT_DIR}")
+    print("\nCONFRONTO TRA I TRE MODELLI OTTIMIZZATI COMPLETATO!")
+    print(f"Cartella risultati: {BASE_OUTPUT_DIR}")
 
 
 if __name__ == "__main__":
@@ -504,8 +444,8 @@ if __name__ == "__main__":
 # =====================================================================
 # NOTA IMPORTANTE SULLE STATISTICHE DEL MODELLO
 # =====================================================================
-# Per creare i grafici su variabili e vincoli, ogni solve_model deve
-# restituire nel dizionario finale anche queste chiavi:
+# Per creare i grafici su variabili e vincoli, ogni solve_model ottimizzato
+# deve restituire nel dizionario finale anche queste chiavi:
 #
 #     "num_vars": model.NumVars,
 #     "num_constrs": model.NumConstrs,
@@ -513,7 +453,7 @@ if __name__ == "__main__":
 # Queste righe vanno aggiunte dentro ogni file modello, dopo model.optimize()
 # e prima del return finale.
 #
-# Se queste chiavi mancano in uno dei due modelli del confronto, il CSV viene
-# comunque creato, ma il grafico variabili/vincoli viene creato solo se entrambi
-# i modelli hanno dati disponibili.
+# Se queste chiavi mancano in uno dei tre modelli, il CSV viene comunque
+# creato, ma il grafico variabili/vincoli viene creato solo per i modelli
+# che restituiscono quei dati.
 # =====================================================================
