@@ -453,7 +453,7 @@ def main():
     # Parametri ridotti per confronto testa-a-testa.
     # Se vuoi replicare più fedelmente il paper, usa (50, 100, 150, 200),
     # ma con M1 base diventa facilmente pesante.
-    N_VALS = ( 25, 50, 75, 100 ) 
+    N_VALS = ( 15, 30, 45, 60) #il modello 1 base dal 75 in su diventa eccessivamente pesante 
     NUM_INST = 5
     TIME_LIM = 900
 

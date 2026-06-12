@@ -527,8 +527,8 @@ def main():
     # Parametri prudenti.
     # Il Testbed B può generare più job di quanto ti aspetti, soprattutto
     # nelle classi VIII, IX, X oppure con |T| grande.
-    T_VALS = (5,10,15,20,25,30)  
-    CLASSES = ("I", "III", "V", "VI", "IX")
+    T_VALS = (5,10,15,20)  
+    CLASSES = ("I", "V", "VI", "IX")
     INSTANCES_PER_CLASS = 5
     TIME_LIM = 900
 
