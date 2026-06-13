@@ -4,8 +4,6 @@ from gurobipy import GRB
 
 def solve_model2(jobs, C, gamma=1.0, time_limit=None, verbose=True, binary_w=True):
     """
-    Model 2 per il Temporal Bin Packing Problem with Fire-Ups.
-
     jobs: lista di tuple (s_i, e_i, c_i)
           s_i = start time
           e_i = end time
@@ -18,9 +16,9 @@ def solve_model2(jobs, C, gamma=1.0, time_limit=None, verbose=True, binary_w=Tru
     binary_w: se True usa w binarie; se False usa w continue >= 0
     """
 
-    # --------------------------------------------------
-    # 1. Ordinamento dei job per tempo di inizio crescente
-    # --------------------------------------------------
+    # ---------------------------------------------------------------------
+    # Ordinamento dei job per tempo di inizio crescente e preprocessing dati
+    # ---------------------------------------------------------------------
     indexed_jobs = list(enumerate(jobs))
     indexed_jobs.sort(key=lambda item: (item[1][0], item[1][1], item[0]))
 
@@ -39,7 +37,7 @@ def solve_model2(jobs, C, gamma=1.0, time_limit=None, verbose=True, binary_w=Tru
     TS = sorted(set(s))
 
     # --------------------------------------------------
-    # 2. Costruzione degli insiemi delta_i e delta_plus_i
+    # Costruzione degli insiemi delta_i e delta_plus_i
     # --------------------------------------------------
 
     #insiemi di insiemi
@@ -60,7 +58,7 @@ def solve_model2(jobs, C, gamma=1.0, time_limit=None, verbose=True, binary_w=Tru
                 delta_plus[i].append(j)
 
     # --------------------------------------------------
-    # 3. Creazione modello Gurobi
+    # Creazione modello Gurobi
     # --------------------------------------------------
     model = gp.Model("TBPP_FU_Model2")
 
@@ -71,7 +69,7 @@ def solve_model2(jobs, C, gamma=1.0, time_limit=None, verbose=True, binary_w=Tru
         model.Params.TimeLimit = time_limit
 
     # --------------------------------------------------
-    # 4. Variabili decisionali
+    # Variabili decisionali
     # --------------------------------------------------
 
     # x[i,k] = 1 se il job i è assegnato al server k
@@ -87,7 +85,7 @@ def solve_model2(jobs, C, gamma=1.0, time_limit=None, verbose=True, binary_w=Tru
         w = model.addVars(TS, K, lb=0.0, vtype=GRB.CONTINUOUS, name="w")
 
     # --------------------------------------------------
-    # 5. Funzione obiettivo
+    # Funzione obiettivo
     # --------------------------------------------------
     model.setObjective(
         gamma * gp.quicksum(w[t, k] for t in TS for k in K)
@@ -96,10 +94,10 @@ def solve_model2(jobs, C, gamma=1.0, time_limit=None, verbose=True, binary_w=Tru
     )
 
     # --------------------------------------------------
-    # 6. Vincoli
+    # Vincoli
     # --------------------------------------------------
 
-    # (10) Vincoli di capacità
+    # Vincoli di capacità
     for i in I:
         for k in K:
             model.addConstr(
@@ -109,14 +107,14 @@ def solve_model2(jobs, C, gamma=1.0, time_limit=None, verbose=True, binary_w=Tru
                 name=f"capacity_i{i}_k{k}"
             )
 
-    # (11) Ogni job assegnato esattamente a un server
+    # Ogni job assegnato esattamente a un server
     for i in I:
         model.addConstr(
             gp.quicksum(x[i, k] for k in K) == 1,
             name=f"assign_i{i}"
         )
 
-    # (12) Se assegno un job al server k, allora il server k è usato
+    # Se assegno un job al server k, allora il server k è usato
     for i in I:
         for k in K:
             model.addConstr(
@@ -124,7 +122,7 @@ def solve_model2(jobs, C, gamma=1.0, time_limit=None, verbose=True, binary_w=Tru
                 name=f"link_x_z_i{i}_k{k}"
             )
 
-    # (13) Vincoli per i fire-up
+    # Vincoli per i fire-up
     for i in I:
         start_i = s[i]
 
@@ -138,12 +136,12 @@ def solve_model2(jobs, C, gamma=1.0, time_limit=None, verbose=True, binary_w=Tru
             )
 
     # --------------------------------------------------
-    # 7. Ottimizzazione
+    # Ottimizzazione
     # --------------------------------------------------
     model.optimize()
 
     # --------------------------------------------------
-    # 8. Estrazione soluzione
+    # Estrazione soluzione
     # --------------------------------------------------
     result = {
         "status": model.Status,
@@ -195,6 +193,7 @@ def solve_model2(jobs, C, gamma=1.0, time_limit=None, verbose=True, binary_w=Tru
     return result
 
 
+"""
 if __name__ == "__main__":
 
     # Esempio piccolo
@@ -222,4 +221,4 @@ if __name__ == "__main__":
     print("Server usati:", result["servers_used"])
     print("Fire-up:", result["fireups"])
     print("Assignment job -> server:", result["assignment"])
-    print("Fire-up times:", result["fireup_times"])
+    print("Fire-up times:", result["fireup_times"])"""

@@ -26,9 +26,6 @@ class TestbedBGenerator:
         e_i = primo time step in cui il job NON è più attivo
         c_i = richiesta di capacità, uniforme in [10, 100]
 
-    Nota:
-        Le classi V e VII hanno gli stessi parametri perché così sono riportate
-        nella tabella del paper.
     """
 
     C = 100
@@ -93,8 +90,6 @@ class TestbedBGenerator:
                 beta = self.rng.randint(params.b_min, params.b_max)
 
                 # Numero di job ereditati dal time step precedente.
-                # Uso int(), cioè troncamento verso il basso, per evitare il
-                # comportamento particolare di round() in Python sui casi .5.
                 num_inherited = int(beta * len(previous_active) / 100)
 
                 num_inherited = max(0, num_inherited)
@@ -137,9 +132,6 @@ class TestbedBGenerator:
         Esempio:
             testbed[(20, "III", 4)] -> quarta istanza della classe III con |T|=20
 
-        Nota sui seed:
-            Non viene usato hash(class_name), perché l'hash di Python può
-            cambiare tra esecuzioni diverse. Il seed qui è deterministico.
         """
 
         if not T_values:
@@ -180,9 +172,6 @@ class TestbedBGenerator:
         class_name: str,
         instance_id: int,
     ) -> int:
-        """
-        Seed stabile e riproducibile per una specifica istanza.
-        """
 
         if class_name not in cls.CLASS_PARAMS:
             raise ValueError(f"Classe non valida: {class_name}")

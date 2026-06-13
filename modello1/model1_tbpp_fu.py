@@ -1,13 +1,9 @@
-# model1_tbpp_fu.py
-
 import gurobipy as gp
 from gurobipy import GRB
 
 
 def solve_model1(jobs, C, gamma=1.0, time_limit=None, verbose=True, binary_w=True):
     """
-    Model 1 per il Temporal Bin Packing Problem with Fire-Ups.
-
     jobs: lista di tuple (s_i, e_i, c_i)
           s_i = start time
           e_i = end time
@@ -21,7 +17,7 @@ def solve_model1(jobs, C, gamma=1.0, time_limit=None, verbose=True, binary_w=Tru
     """
 
     # -----------------------------
-    # 1. Preprocessing dati
+    # Preprocessing dati
     # -----------------------------
 
     n = len(jobs)
@@ -60,7 +56,7 @@ def solve_model1(jobs, C, gamma=1.0, time_limit=None, verbose=True, binary_w=Tru
             a[i, t] = 1 if s[i] <= t < e[i] else 0
 
     # -----------------------------
-    # 2. Creazione modello
+    # Creazione modello
     # -----------------------------
 
     model = gp.Model("TBPP_FU_Model1")
@@ -72,7 +68,7 @@ def solve_model1(jobs, C, gamma=1.0, time_limit=None, verbose=True, binary_w=Tru
         model.Params.TimeLimit = time_limit
 
     # -----------------------------
-    # 3. Variabili
+    # Variabili
     # -----------------------------
 
     # x[i,k] = 1 se job i assegnato al server k
@@ -85,27 +81,25 @@ def solve_model1(jobs, C, gamma=1.0, time_limit=None, verbose=True, binary_w=Tru
     z = model.addVars(K, vtype=GRB.BINARY, name="z")
 
     # w[t,k] = 1 se server k ha un fire-up al tempo t
-    # In teoria il Model 1 dell'articolo definisce w_tk >= 0.
-    # Però computazionalmente è spesso meglio renderla binaria.
     if binary_w:
         w = model.addVars(TS, K, vtype=GRB.BINARY, name="w")
     else:
         w = model.addVars(TS, K, lb=0.0, vtype=GRB.CONTINUOUS, name="w")
 
     # -----------------------------
-    # 4. Funzione obiettivo
+    # Funzione obiettivo
     # -----------------------------
-
-   #in T invece che in TS 
+    
+    #in Ts
     model.setObjective(
         gamma * gp.quicksum(w[t, k] for t in TS for k in K)
         + gp.quicksum(z[k] for k in K),
         GRB.MINIMIZE
     )
 
-    # -----------------------------
-    # 5. Vincoli di capacità e attività
-    # -----------------------------
+    # ----------------------------------
+    # Vincoli di capacità e attività
+    # ----------------------------------
     #
     # y_tk <= sum_i c_i a_it x_ik <= C y_tk
 
@@ -128,7 +122,7 @@ def solve_model1(jobs, C, gamma=1.0, time_limit=None, verbose=True, binary_w=Tru
             )
 
     # -----------------------------
-    # 6. Ogni job assegnato esattamente una volta
+    # Ogni job assegnato esattamente una volta
     # -----------------------------
 
     for i in I:
@@ -138,8 +132,7 @@ def solve_model1(jobs, C, gamma=1.0, time_limit=None, verbose=True, binary_w=Tru
         )
 
     # -----------------------------
-    # 7. Se assegno job i a server k,
-    #    allora il server k deve essere attivo allo start time s_i
+    # Se assegno job i a server k, allora il server k deve essere attivo allo start time s_i
     # -----------------------------
 
     for i in I:
@@ -150,7 +143,7 @@ def solve_model1(jobs, C, gamma=1.0, time_limit=None, verbose=True, binary_w=Tru
             )
 
     # -----------------------------
-    # 8. Se un server è attivo, allora è usato
+    # Se un server è attivo, allora è usato
     # -----------------------------
 
     for t in T:
@@ -161,7 +154,7 @@ def solve_model1(jobs, C, gamma=1.0, time_limit=None, verbose=True, binary_w=Tru
             )
 
     # -----------------------------
-    # 9. Conteggio dei fire-ups
+    # Conteggio dei fire-ups
     # -----------------------------
     #
     # y[t,k] - y[pred(t),k] <= w[t,k]
@@ -184,13 +177,13 @@ def solve_model1(jobs, C, gamma=1.0, time_limit=None, verbose=True, binary_w=Tru
                 )
 
     # -----------------------------
-    # 10. Ottimizzazione
+    # Ottimizzazione
     # -----------------------------
 
     model.optimize()
 
     # -----------------------------
-    # 11. Estrazione risultati
+    # Estrazione risultati
     # -----------------------------
 
     #if status not in [GRB.OPTIMAL, GRB.TIME_LIMIT]:
@@ -253,7 +246,7 @@ def solve_model1(jobs, C, gamma=1.0, time_limit=None, verbose=True, binary_w=Tru
 
     return result
 
-
+"""
 if __name__ == "__main__":
 
     # Esempio piccolo
@@ -290,4 +283,4 @@ if __name__ == "__main__":
     print("Fire-ups:", result["num_fireups"])
     print("Lista fire-ups:", result["fireups"])
     print("Assegnamenti job -> server:", result["assignments"])
-    print("Job per server:", result["server_jobs"])
+    print("Job per server:", result["server_jobs"])"""

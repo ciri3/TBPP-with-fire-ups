@@ -22,8 +22,6 @@ def intervals_overlap(job_a, job_b):
 
 def solve_model3(jobs, C, gamma=1.0, time_limit=None, verbose=True):
     """
-    Model 3 per il Temporal Bin Packing Problem with Fire-Ups.
-
     jobs: lista di tuple (s_i, e_i, c_i)
           s_i = start time
           e_i = end time
@@ -32,20 +30,10 @@ def solve_model3(jobs, C, gamma=1.0, time_limit=None, verbose=True):
     C: capacità massima di ogni server
     gamma: peso dei fire-ups nella funzione obiettivo
     time_limit: limite di tempo in secondi
-    verbose: se True stampa log Gurobi
-
-    Ritorna un dizionario con:
-        - status
-        - objective
-        - fireups
-        - servers_used
-        - assignment
-        - sorted_jobs
-        - original_ids
     """
 
     # ------------------------------------------------------------
-    # 1. Ordinamento dei job
+    # Ordinamento dei job
     # ------------------------------------------------------------
     # Nel Modello 3 è fondamentale ordinare i job per start time.
     # Usiamo anche end time e indice originale per rompere i pareggi.
@@ -59,7 +47,7 @@ def solve_model3(jobs, C, gamma=1.0, time_limit=None, verbose=True):
     I = range(n)
 
     # ------------------------------------------------------------
-    # 2. Costruzione degli insiemi delta_i e delta_plus_i
+    # Costruzione degli insiemi delta_i e delta_plus_i
     # ------------------------------------------------------------
     # delta[i] contiene i job j < i ancora attivi quando inizia i:
     #     s_i < e_j
@@ -89,7 +77,7 @@ def solve_model3(jobs, C, gamma=1.0, time_limit=None, verbose=True):
                 delta_plus[i].append(j)
 
     # ------------------------------------------------------------
-    # 3. Costruzione di Delta_red
+    # Costruzione di Delta_red
     # ------------------------------------------------------------
     # Delta base:
     #     (i, k) con k <= i
@@ -120,16 +108,13 @@ def solve_model3(jobs, C, gamma=1.0, time_limit=None, verbose=True):
                 Delta_red.add((i, k))
 
     # ------------------------------------------------------------
-    # 4. Costruzione di Delta_nd_red
+    # Costruzione di Delta_nd_red
     # ------------------------------------------------------------
     # Riduzione per dominanza temporale.
     #
     # Se due job hanno lo stesso start time, per uno stesso k
     # può bastare tenere il vincolo di capacità del job con indice più alto.
     #
-    # Per semplicità implementiamo la versione sicura:
-    # per ogni coppia (i,k), se esiste j > i con stesso start time
-    # e (j,k) in Delta_red, allora (i,k) è dominato.
     #
     # Questa riduzione si usa solo sui vincoli di capacità.
 
@@ -161,7 +146,7 @@ def solve_model3(jobs, C, gamma=1.0, time_limit=None, verbose=True):
             Delta_nd_red.add((i, k))
 
     # ------------------------------------------------------------
-    # 5. Creazione del modello Gurobi
+    # Creazione del modello Gurobi
     # ------------------------------------------------------------
 
     model = gp.Model("TBPP_FU_Model3")
@@ -173,7 +158,7 @@ def solve_model3(jobs, C, gamma=1.0, time_limit=None, verbose=True):
         model.setParam("TimeLimit", time_limit)
 
     # ------------------------------------------------------------
-    # 6. Variabili
+    # Variabili
     # ------------------------------------------------------------
     # x[i,k] = 1 se il job i va sul server inizializzato dal job k
     # w[i]   = 1 se il job i causa un fire-up
@@ -191,7 +176,7 @@ def solve_model3(jobs, C, gamma=1.0, time_limit=None, verbose=True):
     )
 
     # ------------------------------------------------------------
-    # 7. Funzione obiettivo
+    # Funzione obiettivo
     # ------------------------------------------------------------
     # Minimizziamo:
     #     gamma * numero fire-up + numero server usati
@@ -207,7 +192,7 @@ def solve_model3(jobs, C, gamma=1.0, time_limit=None, verbose=True):
     )
 
     # ------------------------------------------------------------
-    # 8. Vincolo di assegnamento
+    # Vincolo di assegnamento
     # ------------------------------------------------------------
     # Ogni job i deve essere assegnato esattamente a un server.
     #
@@ -225,7 +210,7 @@ def solve_model3(jobs, C, gamma=1.0, time_limit=None, verbose=True):
         )
 
     # ------------------------------------------------------------
-    # 9. Vincoli di capacità
+    # Vincoli di capacità
     # ------------------------------------------------------------
     # Per ogni coppia utile (i,k):
     #
@@ -252,7 +237,7 @@ def solve_model3(jobs, C, gamma=1.0, time_limit=None, verbose=True):
         )
 
     # ------------------------------------------------------------
-    # 10. Vincoli di collegamento
+    # Vincoli di collegamento
     # ------------------------------------------------------------
     # Se i va sul server inizializzato da k,
     # allora k deve davvero inizializzare quel server.
@@ -267,7 +252,7 @@ def solve_model3(jobs, C, gamma=1.0, time_limit=None, verbose=True):
             )
 
     # ------------------------------------------------------------
-    # 11. Vincoli sui fire-up
+    # Vincoli sui fire-up
     # ------------------------------------------------------------
     # Se il job i va sul server k e prima di i non c'era niente
     # su quel server, allora w[i] deve diventare 1.
@@ -288,13 +273,13 @@ def solve_model3(jobs, C, gamma=1.0, time_limit=None, verbose=True):
         )
 
     # ------------------------------------------------------------
-    # 12. Risoluzione
+    # Risoluzione
     # ------------------------------------------------------------
 
     model.optimize()
 
     # ------------------------------------------------------------
-    # 13. Estrazione soluzione
+    # Estrazione soluzione
     # ------------------------------------------------------------
 
     result = {
@@ -352,7 +337,7 @@ def solve_model3(jobs, C, gamma=1.0, time_limit=None, verbose=True):
 
     return result
 
-
+"""
 if __name__ == "__main__":
     # Esempio piccolo di test
     jobs = [
@@ -377,4 +362,4 @@ if __name__ == "__main__":
     print("Objective:", result["objective"])
     print("Server usati:", result["servers_used"])
     print("Fire-up:", result["fireups"])
-    print("Assignment:", result["assignment"])
+    print("Assignment:", result["assignment"])"""

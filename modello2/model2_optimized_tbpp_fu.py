@@ -5,8 +5,6 @@ import math
 
 def solve_model2_optimized(jobs, C, gamma=1.0, time_limit=None, verbose=True):
     """
-    Modello 2 ottimizzato per TBPP-FU.
-
     Include:
     - R0 / Lit-A: lower bound h0 sui server usati
     - R0 / Lit-B: ordinamento z[k] >= z[k+1]
@@ -18,9 +16,9 @@ def solve_model2_optimized(jobs, C, gamma=1.0, time_limit=None, verbose=True):
     - R5: vincoli capacità solo per starting time non dominati
     """
 
-    # --------------------------------------------------
-    # 1. Ordinamento job per start time crescente
-    # --------------------------------------------------
+    # ---------------------------------------------------------------------
+    # Ordinamento dei job per tempo di inizio crescente e preprocessing dati
+    # ---------------------------------------------------------------------
     indexed_jobs = list(enumerate(jobs))
     indexed_jobs.sort(key=lambda item: (item[1][0], item[1][1], item[0]))
 
@@ -40,14 +38,14 @@ def solve_model2_optimized(jobs, C, gamma=1.0, time_limit=None, verbose=True):
             raise ValueError(f"Job {i} ha capacità {c[i]} > C={C}")
 
     # --------------------------------------------------
-    # 2. Insiemi temporali
+    # Insiemi temporali
     # --------------------------------------------------
     T = sorted(set(s) | set(e))
     TS = sorted(set(s))
     E_times = set(e)
 
     # --------------------------------------------------
-    # 3. Lower bound h0, Lit-A
+    # Lower bound h0, Lit-A
     # --------------------------------------------------
     max_load = 0
     for t in TS:
@@ -57,7 +55,7 @@ def solve_model2_optimized(jobs, C, gamma=1.0, time_limit=None, verbose=True):
     h0 = math.ceil(max_load / C)
 
     # --------------------------------------------------
-    # 4. R1: struttura triangolare DeltaGrande
+    # R1: struttura triangolare DeltaGrande
     # --------------------------------------------------
     DeltaGrande = [(i, k) for i in I for k in K if k <= i]
 
@@ -79,7 +77,7 @@ def solve_model2_optimized(jobs, C, gamma=1.0, time_limit=None, verbose=True):
     ]
 
     # --------------------------------------------------
-    # 5. DeltaGrande e delta_plus
+    # DeltaGrande e delta_plus
     # --------------------------------------------------
     delta = {}
     delta_plus = {}
@@ -98,7 +96,7 @@ def solve_model2_optimized(jobs, C, gamma=1.0, time_limit=None, verbose=True):
                 delta_plus[i].append(j)
 
     # --------------------------------------------------
-    # 6. R5: starting time non dominati
+    # R5: starting time non dominati
     # --------------------------------------------------
     succ_T = {}
     for idx, t in enumerate(T[:-1]):
@@ -109,14 +107,8 @@ def solve_model2_optimized(jobs, C, gamma=1.0, time_limit=None, verbose=True):
         if succ_T.get(t) in E_times
     }
 
-    # Nota: se l'ultimo tempo fosse uno start senza successore, lo teniamo
-    # per sicurezza, anche se in istanze normali ogni job ha e_i > s_i.
-    for t in TS:
-        if t not in succ_T:
-            TS_nd.add(t)
-
     # --------------------------------------------------
-    # 7. Creazione modello
+    # Creazione modello
     # --------------------------------------------------
     model = gp.Model("TBPP_FU_Model2_Optimized")
 
@@ -127,7 +119,7 @@ def solve_model2_optimized(jobs, C, gamma=1.0, time_limit=None, verbose=True):
         model.Params.TimeLimit = time_limit
 
     # --------------------------------------------------
-    # 8. Variabili decisionali
+    # Variabili decisionali
     # --------------------------------------------------
 
     # R1: x solo per k <= i
@@ -139,7 +131,7 @@ def solve_model2_optimized(jobs, C, gamma=1.0, time_limit=None, verbose=True):
     w = model.addVars(W_index, vtype=GRB.BINARY, name="w")
 
     # --------------------------------------------------
-    # 9. Funzione obiettivo
+    # Funzione obiettivo
     # --------------------------------------------------
     model.setObjective(
         gamma * gp.quicksum(w[t, k] for (t, k) in W_index)
@@ -148,7 +140,7 @@ def solve_model2_optimized(jobs, C, gamma=1.0, time_limit=None, verbose=True):
     )
 
     # --------------------------------------------------
-    # 10. Vincoli
+    # Vincoli
     # --------------------------------------------------
 
     # Lit-A: primi h0 server fissati a 1
@@ -159,7 +151,7 @@ def solve_model2_optimized(jobs, C, gamma=1.0, time_limit=None, verbose=True):
     for k in range(h0, n - 1):
         model.addConstr(z[k] >= z[k + 1], name=f"litB_order_z_{k}")
 
-    # (10) R5: vincoli capacità solo per start time non dominati
+    # R5: vincoli capacità solo per start time non dominati
     for i in I:
         if s[i] not in TS_nd:
             continue
@@ -181,21 +173,21 @@ def solve_model2_optimized(jobs, C, gamma=1.0, time_limit=None, verbose=True):
                 name=f"capacity_i{i}_k{k}"
             )
 
-    # (11) ogni job assegnato esattamente a un server ammesso
+    # ogni job assegnato esattamente a un server ammesso
     for i in I:
         model.addConstr(
             gp.quicksum(x[i, k] for k in K if (i, k) in x) == 1,
             name=f"assign_i{i}"
         )
 
-    # (12) link x-z
+    # link x-z
     for (i, k) in DeltaGrande:
         model.addConstr(
             x[i, k] <= z[k],
             name=f"link_x_z_i{i}_k{k}"
         )
 
-    # (13) vincoli fire-up con delta_plus modificato da R4
+    # vincoli fire-up con delta_plus modificato da R4
     for i in I:
         start_i = s[i]
 
@@ -226,12 +218,12 @@ def solve_model2_optimized(jobs, C, gamma=1.0, time_limit=None, verbose=True):
         )
 
     # --------------------------------------------------
-    # 11. Ottimizzazione
+    # Ottimizzazione
     # --------------------------------------------------
     model.optimize()
 
     # --------------------------------------------------
-    # 12. Estrazione soluzione
+    # Estrazione soluzione
     # --------------------------------------------------
     result = {
         "status": model.Status,

@@ -21,15 +21,15 @@ from modello3.model3_optimized_tbpp_fu import solve_model3_optimized
 # Tutti gli output verranno creati dentro questa cartella:
 BASE_OUTPUT_DIR = os.path.join("scalabilityTests", "TestaATesta_TestbedA")
 
-# ==========================================================================
-# importante: regolare i valori del test modificando le variabili in main()
-# ==========================================================================
+# ----------------------------------------------------------------------------------
+# importante: per regolare i valori del test modificare le variabili in main()
+# -----------------------------------------------------------------------------------
 
 
 
-# =====================================================================
+# ----------------------------------------------------------------------
 # FUNZIONI DI SUPPORTO
-# =====================================================================
+# ----------------------------------------------------------------------
 
 def safe_runtime(result, time_limit):
     """
@@ -50,8 +50,7 @@ def safe_runtime(result, time_limit):
 
 def safe_stat(result, possible_keys):
     """
-    Cerca una statistica nel dizionario risultato usando più possibili nomi.
-    Serve perché i tuoi solve_model possono usare chiavi diverse.
+    Cerca una statistica nel dizionario risultato usando più nomi possibili.
     """
     for key in possible_keys:
         if key in result:
@@ -138,8 +137,7 @@ def make_model_size_plot(n_values, n_rows, dict_models, graph_png, metric, ylabe
     Crea un grafico per variabili oppure vincoli.
 
     Se un modello non ha valori disponibili, viene saltato.
-    Se meno di due modelli hanno valori disponibili, il grafico non viene creato:
-    così evitiamo grafici con una sola linea che possono trarre in inganno.
+    Se meno di due modelli hanno valori disponibili, il grafico non viene creato. in modo da avere solo grafici che contengano entrambi i modelli.
     """
     plt.figure(figsize=(9, 6))
     markers = ["o", "s", "^", "x", "D", "*"]
@@ -192,9 +190,9 @@ def make_model_size_plot(n_values, n_rows, dict_models, graph_png, metric, ylabe
     return True
 
 
-# =====================================================================
+# ----------------------------------------------------------------------
 # ESPERIMENTO HEAD-TO-HEAD
-# =====================================================================
+# ----------------------------------------------------------------------
 
 def run_head_to_head_comparison(
     comparison_name,
@@ -397,23 +395,12 @@ def run_head_to_head_comparison(
     print(f"Dati e grafici salvati in: {output_dir}")
 
 
-# =====================================================================
+# ---------------------------------------------------------------------
 # WRAPPERS PER UNIFICARE LE FIRME DELLE FUNZIONI
-# =====================================================================
+# ---------------------------------------------------------------------
 
 def wrap_m1_base(jobs, C, gamma, time_limit, verbose):
-    # SALVAVITA: evita OOM su M1 base.
-    # Con N_VALS=(3,5,7,10) non dovrebbe scattare.
-    #if len(jobs) > 25:
-    #    return {
-    #        "status": 9,
-    #        "runtime": time_limit,
-    #        "objective": None,
-    #        "servers_used": None,
-    #        "fireups": None,
-    #        "num_vars": None,
-    #        "num_constrs": None,
-    #    }
+    
     return solve_model1(
         jobs=jobs,
         C=C,
@@ -445,15 +432,16 @@ def wrap_m3_base(jobs, C, gamma, time_limit, verbose):
     )
 
 
-# =====================================================================
+# --------------------------------------------------------
 # MAIN
-# =====================================================================
+# --------------------------------------------------------
 
 def main():
     # Parametri ridotti per confronto testa-a-testa.
     # Se vuoi replicare più fedelmente il paper, usa (50, 100, 150, 200),
     # ma con M1 base diventa facilmente pesante.
     N_VALS = ( 15, 30, 45, 60) #il modello 1 base dal 75 in su diventa eccessivamente pesante 
+    N_VALS_M2 = ( 15, 30, 45) #il modello 2 base dal 45 in su diventa eccessivamente pesante
     NUM_INST = 5
     TIME_LIM = 900
 
@@ -480,7 +468,7 @@ def main():
             "M2 Opt": solve_model2_optimized,
         },
         output_dir=os.path.join(BASE_OUTPUT_DIR, "results_testbedA_M2_vs_M2opt"),
-        n_values=N_VALS,
+        n_values = N_VALS_M2,
         num_instances=NUM_INST,
         time_limit=TIME_LIM,
     )
@@ -506,19 +494,3 @@ if __name__ == "__main__":
     main()
 
 
-# =====================================================================
-# NOTA IMPORTANTE SULLE STATISTICHE DEL MODELLO
-# =====================================================================
-# Per creare i grafici su variabili e vincoli, ogni solve_model deve
-# restituire nel dizionario finale anche queste chiavi:
-#
-#     "num_vars": model.NumVars,
-#     "num_constrs": model.NumConstrs,
-#
-# Queste righe vanno aggiunte dentro ogni file modello, dopo model.optimize()
-# e prima del return finale.
-#
-# Se queste chiavi mancano in uno dei due modelli del confronto, il CSV viene
-# comunque creato, ma il grafico variabili/vincoli viene creato solo se entrambi
-# i modelli hanno dati disponibili.
-# =====================================================================

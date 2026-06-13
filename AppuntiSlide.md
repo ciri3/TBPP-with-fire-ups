@@ -51,3 +51,7 @@ però:
 ## analisi parametri scalabilityTest
 
 Due to limited computational resources, we used a reduced but structured benchmark. For Testbed A, we preserved the factorial structure of the original benchmark while reducing the number of jobs to n∈{25,50,75,100}. For Testbed B, we selected representative values of ∣T∣ and a subset of classes covering different levels of instance difficulty.
+
+
+# analisi confronti 
+Per l'istanza con parametri n = 45, s = 1.0, duration = long, size = low si osservano particolari difficoltà computazionali. In particolare, per alcuni seed (ad esempio 43 e 44) sia le formulazioni base sia quelle ottimizzate dei modelli M1 e M2 raggiungono il time limit senza provare l'ottimalità. Per altri seed della stessa categoria (ad esempio 45), le versioni ottimizzate riescono invece a trovare soluzioni migliori rispetto alle formulazioni base, evidenziando l'efficacia delle tecniche di riduzione adottate pur in presenza di istanze particolarmente difficili.

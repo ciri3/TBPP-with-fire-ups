@@ -10,25 +10,23 @@ from modello2.model2_optimized_tbpp_fu import solve_model2_optimized
 from modello3.model3_optimized_tbpp_fu import solve_model3_optimized
 
 
-# ============================================================
+# ------------------------------------------------------------
 # Scalability test - Testbed B / Category B del paper
 # Confronto unico tra M1, M2, M3 ottimizzati
-# Output:
-#     scalabilityTests/confronto_modelli_opt_testbedB
-# ============================================================
+# ------------------------------------------------------------
 
 
-# ==========================================================================
+# -----------------------------------------------------------------
 # importante: regolare i valori del test modificando le variabili run_scalability_testbedB_optimized
-# ==========================================================================
+# -----------------------------------------------------------------
 
 
 BASE_OUTPUT_DIR = os.path.join("scalabilityTests", "confronto_modelli_opt_testbedB")
 
 
-# ============================================================
+# ------------------------------------------------------------
 # Funzioni di supporto
-# ============================================================
+# ------------------------------------------------------------
 
 def safe_runtime(result, time_limit):
     """
@@ -191,9 +189,9 @@ def make_model_size_plot(T_values, T_rows, models, graph_png, metric, ylabel, ti
     return True
 
 
-# ============================================================
+# ------------------------------------------------------------
 # Esperimento principale
-# ============================================================
+# ------------------------------------------------------------
 
 def run_scalability_testbedB_optimized(
     output_dir=BASE_OUTPUT_DIR,
@@ -215,15 +213,7 @@ def run_scalability_testbedB_optimized(
     - scalability_runtime.png
     - scalability_num_vars.png, se i modelli restituiscono num_vars
     - scalability_num_constrs.png, se i modelli restituiscono num_constrs
-
-    Per avvicinarti al Testbed B del paper puoi usare, ad esempio:
-        T_values=(10, 15, 20, 30, 40, 50, 60)
-        classes=("I", "II", "III", "IV", "V", "VI", "VII", "VIII", "IX", "X")
-        num_instances=10
-        time_limit=1800
-
-    Nota pratica:
-        Le classi VIII, IX, X e valori grandi di |T| possono diventare pesanti.
+    
     """
     os.makedirs(output_dir, exist_ok=True)
 

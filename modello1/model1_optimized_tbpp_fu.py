@@ -11,24 +11,21 @@ def solve_model1_optimized(
     verbose=True
 ):
     """
-    Modello 1 ottimizzato per TBPP-FU.
-
     Include:
     - Lit-A: lower bound h0 sui server usati
     - Lit-B: ordinamento dei server z[k] >= z[k+1]
-    - w binarie
+    - w binarie (di default, ma esplicitato)
     - R1: struttura triangolare x[i,k] solo per k <= i
     - R2(a): z[k] <= sum_t w[t,k]
 
     jobs: lista di tuple (s_i, e_i, c_i)
-          con indici Python 0-based.
     C: capacità server.
-    gamma: peso dei fire-up.
+    gamma: peso dei fire-up nella funzione obbiettivo.
     """
 
-    # =========================
-    # 1. PREPROCESSING DATI
-    # =========================
+    # ----------------------
+    # PREPROCESSING DATI
+    # ----------------------
 
     n = len(jobs)
 
@@ -44,17 +41,14 @@ def solve_model1_optimized(
         if c[i] > C:
             raise ValueError(f"Job {i} ha c_i={c[i]} > C={C}. Istanza infeasible.")
 
-    # Insieme globale dei tempi
-    #T_global = sorted(set([s[i] for i in I] + [e[i] for i in I]))
-
+   
     # Insieme globale degli starting times
     TS_global = sorted(set(s[i] for i in I))
 
-    # =========================
-    # 2. R1: STRUTTURA TRIANGOLARE
-    # =========================
-    # Delta = {(i,k) | k <= i}
-    # Attenzione: con indici Python 0-based, k <= i.
+    # ----------------------------
+    # R1: STRUTTURA TRIANGOLARE
+    # ----------------------------
+    # Delta = {(i,k) | k <= i}, con indici Python 0-based, k <= i.
 
     Delta = [(i, k) for i in I for k in K if k <= i]
 
@@ -93,14 +87,14 @@ def solve_model1_optimized(
             else:
                 pred_k[k][t] = times[idx - 1]
 
-    # Parametro a_it: job i attivo al tempo t?
+    # Parametro a(i,t): job i attivo al tempo t?
     # Lo calcoliamo solo quando serve. a(i,t)
     def is_active(i, t):
         return 1 if s[i] <= t < e[i] else 0
 
-    # =========================
-    # 3. Lit-A: MATERIAL BOUND h0
-    # =========================
+    # ----------------------------
+    # Lit-A: MATERIAL BOUND h0
+    # ----------------------------
     # h0 = ceil(max_t sum_i a_it c_i / C)
     # Basta considerare t in TS_global.
 
@@ -115,9 +109,9 @@ def solve_model1_optimized(
     if verbose:
         print(f"Material bound h0 = {h0}")
 
-    # =========================
-    # 4. MODELLO GUROBI
-    # =========================
+    # ----------------------------
+    # MODELLO GUROBI
+    # ----------------------------
 
     model = gp.Model("Model1_Optimized_TBPP_FU")
 
@@ -126,9 +120,9 @@ def solve_model1_optimized(
 
     model.Params.TimeLimit = time_limit
 
-    # =========================
-    # 5. VARIABILI
-    # =========================
+    # ----------------------------
+    # VARIABILI
+    # ----------------------------
 
     # x[i,k] solo per k <= i
     x = model.addVars(
@@ -170,9 +164,9 @@ def solve_model1_optimized(
         name="z"
     )
 
-    # =========================
-    # 6. OBIETTIVO
-    # =========================
+    # ----------------------------
+    # OBIETTIVO
+    # ----------------------------
 
     model.setObjective(
         gamma * gp.quicksum(w[t, k] for (t, k) in w_index)
@@ -180,11 +174,11 @@ def solve_model1_optimized(
         GRB.MINIMIZE
     )
 
-    # =========================
-    # 7. VINCOLI BASE DEL MODELLO 1
-    # =========================
+    # ----------------------------
+    # VINCOLI BASE DEL MODELLO 1
+    # ----------------------------
 
-    # (1) y_tk <= carico_tk <= C y_tk
+    # y_tk <= carico_tk <= C y_tk
     for k in K:
         for t in T_k[k]:
 
@@ -206,21 +200,21 @@ def solve_model1_optimized(
                 name=f"capacity_k{k}_t{t}"
             )
 
-    # (2) Ogni job assegnato esattamente una volta
+    # Ogni job assegnato esattamente una volta
     for i in I:
         model.addConstr(
             gp.quicksum(x[i, k] for k in K if (i, k) in x) == 1,
             name=f"assign_job_{i}"
         )
 
-    # (3) Se job i è su server k, allora server k è attivo a s_i
+    # Se job i è su server k, allora server k è attivo a s_i
     for (i, k) in Delta:
         model.addConstr(
             x[i, k] <= y[s[i], k],
             name=f"x_implies_y_start_i{i}_k{k}"
         )
 
-    # (4) Se server k è attivo in t, allora server k è usato
+    # Se server k è attivo in t, allora server k è usato
     for k in K:
         for t in T_k[k]:
             model.addConstr(
@@ -228,7 +222,7 @@ def solve_model1_optimized(
                 name=f"y_implies_z_k{k}_t{t}"
             )
 
-    # (5) Fire-up: y[t,k] - y[pred,t,k] <= w[t,k]
+    # Fire-up: y[t,k] - y[pred,t,k] <= w[t,k]
     for k in K:
         for t in TS_k[k]:
 
@@ -246,9 +240,9 @@ def solve_model1_optimized(
                     name=f"fireup_k{k}_t{t}"
                 )
 
-    # =========================
-    # 8. Lit-A: FISSARE I PRIMI h0 SERVER
-    # =========================
+    # -------------------------------------
+    # Lit-A: FISSARE I PRIMI h0 SERVER
+    # -------------------------------------
 
     for k in range(h0):
         model.addConstr(
@@ -256,9 +250,9 @@ def solve_model1_optimized(
             name=f"fix_used_server_{k}"
         )
 
-    # =========================
-    # 9. Lit-B: ORDINAMENTO SERVER
-    # =========================
+    # ----------------------------
+    # Lit-B: ORDINAMENTO SERVER
+    # ----------------------------
     # z[k] >= z[k+1] solo da k = h0 in poi.
     # Con indici 0-based: k va da h0 a n-2.
 
@@ -268,9 +262,9 @@ def solve_model1_optimized(
             name=f"server_order_{k}"
         )
 
-    # =========================
-    # 10. R2(a): SERVER USATO => ALMENO UN FIRE-UP
-    # =========================
+    # ----------------------------
+    # R2(a): SERVER USATO => ALMENO UN FIRE-UP
+    # ----------------------------
 
     for k in K:
         model.addConstr(
@@ -278,15 +272,15 @@ def solve_model1_optimized(
             name=f"used_server_has_fireup_{k}"
         )
 
-    # =========================
-    # 11. OTTIMIZZAZIONE
-    # =========================
+    # ----------------------------
+    # OTTIMIZZAZIONE
+    # ----------------------------
 
     model.optimize()
 
-    # =========================
-    # 12. ESTRAZIONE RISULTATI
-    # =========================
+    # ----------------------------
+    # ESTRAZIONE RISULTATI
+    # ----------------------------
 
     result = {
         "status": model.Status,

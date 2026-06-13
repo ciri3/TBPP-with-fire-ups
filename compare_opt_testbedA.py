@@ -11,25 +11,23 @@ from modello2.model2_optimized_tbpp_fu import solve_model2_optimized
 from modello3.model3_optimized_tbpp_fu import solve_model3_optimized
 
 
-# ============================================================
+# ------------------------------------------------------------
 # Scalability test - Testbed A del paper
 # Confronto unico tra M1, M2, M3 ottimizzati
-# Output richiesto:
-#     scalabilityTests/confronto_modelli_opt_testbedA
-# ============================================================
+# ------------------------------------------------------------
 
 
-# ==========================================================================
+# ------------------------------------------------------------------
 # importante: regolare i valori del test modificando le variabili run_scalability_testbedA_optimized
-# ==========================================================================
+# ------------------------------------------------------------------
 
 
 BASE_OUTPUT_DIR = os.path.join("scalabilityTests", "confronto_modelli_opt_testbedA")
 
 
-# ============================================================
+# ------------------------------------------------------------
 # Funzioni di supporto
-# ============================================================
+# ------------------------------------------------------------
 
 def safe_runtime(result, time_limit):
     """
@@ -67,10 +65,6 @@ def run_model(model_name, model_function, jobs, C, gamma, time_limit):
     - num_vars: numero di variabili del modello Gurobi
     - num_constrs: numero di vincoli del modello Gurobi
 
-    ATTENZIONE: questi valori compaiono solo se i file dei modelli
-    restituiscono nel return finale:
-        "num_vars": model.NumVars,
-        "num_constrs": model.NumConstrs,
     """
     wall_start = time.time()
 
@@ -197,9 +191,9 @@ def make_model_size_plot(n_values, n_rows, models, graph_png, metric, ylabel, ti
     return True
 
 
-# ============================================================
+# ------------------------------------------------------------
 # Esperimento principale
-# ============================================================
+# ------------------------------------------------------------
 
 def run_scalability_testbedA_optimized(
     output_dir=BASE_OUTPUT_DIR,
@@ -224,7 +218,7 @@ def run_scalability_testbedA_optimized(
     - scalability_num_vars.png, se i modelli restituiscono num_vars
     - scalability_num_constrs.png, se i modelli restituiscono num_constrs
 
-    Per replicare il Testbed A completo del paper, puoi impostare:
+    Per replicare il Testbed A completo del paper, impostare:
         n_values=(50, 100, 150, 200)
         time_limit=1800
     """

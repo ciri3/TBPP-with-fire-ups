@@ -18,28 +18,6 @@ def intervals_overlap(job_a, job_b):
     return s_a < e_b and s_b < e_a
 
 
-def compute_material_lower_bound(sorted_jobs, C):
-    """
-    R0 / Lit-A adattato al Modello 3.
-
-    Calcola h0 = ceil( max_t carico_totale_attivo(t) / C ).
-
-    Basta controllare gli start time, perché il carico totale può aumentare
-    solo quando inizia almeno un job; agli end time può solo diminuire.
-    """
-    start_times = sorted({job[0] for job in sorted_jobs})
-
-    max_load = 0
-    for t in start_times:
-        load_t = sum(
-            c_i
-            for s_i, e_i, c_i in sorted_jobs
-            if s_i <= t < e_i
-        )
-        max_load = max(max_load, load_t)
-
-    return math.ceil(max_load / C)
-
 def solve_model3_optimized(
     jobs,
     C,
@@ -48,16 +26,11 @@ def solve_model3_optimized(
     verbose=True
 ):
     """
-    Modello 3 ottimizzato, senza lifting, per il Temporal Bin Packing Problem with Fire-Ups.
-
     Include:
     - R0: lower bound h0 sul numero di server inizializzatori
     - R1*: Delta_red, cioè eliminazione delle coppie (i,k) impossibili
     - R2*: disuguaglianza valida x[k,k] <= w[k]
     - R5*: Delta_red_nd, cioè eliminazione dei vincoli di capacità dominati
-
-    NON include:
-    - R3: lifting delle capacità c_i
 
     R4 NON viene applicata nel Modello 3:
     escludere i job con stesso start time da delta_plus_i porterebbe
@@ -65,7 +38,7 @@ def solve_model3_optimized(
     """
 
     # ------------------------------------------------------------
-    # 1. Ordinamento dei job
+    # Ordinamento dei job
     # ------------------------------------------------------------
     indexed_jobs = list(enumerate(jobs))
     indexed_jobs.sort(key=lambda item: (item[1][0], item[1][1], item[0]))
@@ -84,24 +57,32 @@ def solve_model3_optimized(
             )
 
     # ------------------------------------------------------------
-    # 2. R0: lower bound h0 sul numero minimo di server
+    # R0: lower bound h0 sul numero minimo di server
     # ------------------------------------------------------------
     
-    h0 = compute_material_lower_bound(sorted_jobs, C)
-    
+    start_times = sorted({job[0] for job in sorted_jobs})
+
+    max_load = 0
+    for t in start_times:
+        load_t = sum(
+            c_i
+            for s_i, e_i, c_i in sorted_jobs
+            if s_i <= t < e_i
+        )
+        max_load = max(max_load, load_t)
+
+    h0 = math.ceil(max_load / C)
 
     # ------------------------------------------------------------
-    # 3. Costruzione di delta_i e delta_plus_i
+    # Costruzione di delta_i e delta_plus_i
     # ------------------------------------------------------------
     # delta[i] contiene i job j < i attivi allo start time di i.
     # delta_plus[i] contiene i job j < i ancora attivi oppure appena terminati
-    # allo start time di i. Nel Modello 3 NON si applica R4, quindi NON si
-    # escludono i job con stesso start time.
+    # allo start time di i.
     delta = {}
     delta_plus = {}
 
     for i in I:
-        #s_i, _, _ = sorted_jobs[i]
         s_i = sorted_jobs[i][0]
         
 
@@ -109,7 +90,6 @@ def solve_model3_optimized(
         delta_plus[i] = []
 
         for j in range(i):
-            #_, e_j, _ = sorted_jobs[j]
             e_j = sorted_jobs[j][1]
 
             if s_i < e_j:
@@ -119,7 +99,7 @@ def solve_model3_optimized(
                 delta_plus[i].append(j)
 
     # ------------------------------------------------------------
-    # 4. R1*: costruzione di Delta_red
+    # R1*: costruzione di Delta_red
     # ------------------------------------------------------------
     # Delta base sarebbe: (i,k) con k <= i.
     # Delta_red elimina le coppie in cui i e k si sovrappongono e
@@ -144,7 +124,7 @@ def solve_model3_optimized(
             Delta_red.add((i, k))
 
     # ------------------------------------------------------------
-    # 5. R5*: costruzione di Delta_red_nd
+    # R5*: costruzione di Delta_red_nd
     # ------------------------------------------------------------
     # Se i e j hanno stesso start time, k < i < j,
     # (i,k), (j,k) in Delta_red, allora (j,k) domina (i,k).
@@ -155,7 +135,6 @@ def solve_model3_optimized(
 
         #scartiamo la diagonale perchè il job inizializzatore non è coinvolto nei vincoli di capacità non potendo superare la capacità del server da solo
         if i == k:
-            #Delta_red_nd.add((i, k))
             continue
 
         s_i = sorted_jobs[i][0]
@@ -175,7 +154,7 @@ def solve_model3_optimized(
             Delta_red_nd.add((i, k))
 
     # ------------------------------------------------------------
-    # 6. Creazione modello Gurobi
+    # Creazione modello Gurobi
     # ------------------------------------------------------------
     model = gp.Model("TBPP_FU_Model3_Optimized_NoLifting")
 
@@ -186,7 +165,7 @@ def solve_model3_optimized(
         model.setParam("TimeLimit", time_limit)
 
     # ------------------------------------------------------------
-    # 7. Variabili
+    # Variabili
     # ------------------------------------------------------------
     # x[i,k] = 1 se job i è eseguito sul server inizializzato da job k
     # w[i]   = 1 se job i causa un fire-up
@@ -203,7 +182,7 @@ def solve_model3_optimized(
     )
 
     # ------------------------------------------------------------
-    # 8. Funzione obiettivo
+    # Funzione obiettivo
     # ------------------------------------------------------------
     model.setObjective(
         gamma * gp.quicksum(w[i] for i in I)
@@ -212,7 +191,7 @@ def solve_model3_optimized(
     )
 
     # ------------------------------------------------------------
-    # 9. R0: lower bound sui server inizializzatori
+    # R0: lower bound sui server inizializzatori
     # ------------------------------------------------------------
     # Nel Modello 3 non abbiamo z[k].
     # Il server usato/iniziato da k è rappresentato da x[k,k].
@@ -223,7 +202,7 @@ def solve_model3_optimized(
     )
 
     # ------------------------------------------------------------
-    # 10. Vincoli di assegnamento (33)
+    # Vincoli di assegnamento 
     # ------------------------------------------------------------
     for i in I:
         feasible_initializers = [
@@ -237,7 +216,7 @@ def solve_model3_optimized(
         )
 
     # ------------------------------------------------------------
-    # 11. Vincoli di capacità ridotti (32)
+    # Vincoli di capacità ridotti 
     # ------------------------------------------------------------
     # Creati solo per (i,k) in Delta_red_nd e i != k.
     for (i, k) in sorted(Delta_red_nd):
@@ -258,7 +237,7 @@ def solve_model3_optimized(
         )
 
     # ------------------------------------------------------------
-    # 12. Vincoli di collegamento (34)
+    # Vincoli di collegamento 
     # ------------------------------------------------------------
     for (i, k) in sorted(Delta_red):
         if i != k:
@@ -268,7 +247,7 @@ def solve_model3_optimized(
             )
 
     # ------------------------------------------------------------
-    # 13. R2*: disuguaglianze valide x[k,k] <= w[k]
+    # R2*: disuguaglianze valide x[k,k] <= w[k]
     # ------------------------------------------------------------
     # Se k inizializza un server, allora k causa sicuramente un fire-up.
     for k in I:
@@ -278,7 +257,7 @@ def solve_model3_optimized(
         )
 
     # ------------------------------------------------------------
-    # 14. Vincoli sui fire-up (35)
+    # Vincoli sui fire-up 
     # ------------------------------------------------------------
     for (i, k) in sorted(Delta_red):
         model.addConstr(
@@ -294,12 +273,12 @@ def solve_model3_optimized(
         )
 
     # ------------------------------------------------------------
-    # 15. Risoluzione
+    # Risoluzione
     # ------------------------------------------------------------
     model.optimize()
 
     # ------------------------------------------------------------
-    # 16. Estrazione soluzione
+    # Estrazione soluzione
     # ------------------------------------------------------------
     result = {
         "status": model.Status,
@@ -357,7 +336,7 @@ def solve_model3_optimized(
 
     return result
 
-
+"""
 if __name__ == "__main__":
     jobs = [
         (0, 4, 40),
@@ -385,4 +364,4 @@ if __name__ == "__main__":
     print("h0:", result["h0"])
     print("Variabili:", result["n_vars"])
     print("Vincoli:", result["n_constrs"])
-    print("Nonzero:", result["n_nonzeros"])
+    print("Nonzero:", result["n_nonzeros"])"""

@@ -20,15 +20,15 @@ from modello3.model3_optimized_tbpp_fu import solve_model3_optimized
 # Tutti gli output verranno creati dentro questa cartella:
 BASE_OUTPUT_DIR = os.path.join("scalabilityTests", "TestaATesta_TestbedB")
 
-# ==========================================================================
+# ----------------------------------------------------------------------------
 # importante: regolare i valori del test modificando le variabili in main()
-# ==========================================================================
+# ----------------------------------------------------------------------------
 
 
 
-# =====================================================================
+# ---------------------------------------------------------------------
 # FUNZIONI DI SUPPORTO
-# =====================================================================
+# ---------------------------------------------------------------------
 
 def safe_runtime(result, time_limit):
     """
@@ -226,9 +226,9 @@ def make_mean_jobs_plot(T_values, T_rows, graph_png, title):
     plt.close()
 
 
-# =====================================================================
+# ---------------------------------------------------------------------
 # ESPERIMENTO HEAD-TO-HEAD SU TESTBED B
-# =====================================================================
+# ---------------------------------------------------------------------
 
 def run_head_to_head_comparison_testbedB(
     comparison_name,
@@ -254,10 +254,6 @@ def run_head_to_head_comparison_testbedB(
     - scalability_num_constrs.png: grafico numero medio vincoli, se disponibile
     - scalability_mean_jobs.png: grafico numero medio di job generati rispetto a |T|
 
-    Nota:
-    Nel Testbed B non scegli direttamente n.
-    Il numero di job viene generato in base a |T|, alla classe e alla percentuale
-    di job ereditati dal time step precedente.
     """
     os.makedirs(output_dir, exist_ok=True)
 
@@ -469,25 +465,12 @@ def run_head_to_head_comparison_testbedB(
     print(f"Dati e grafici salvati in: {output_dir}")
 
 
-# =====================================================================
+# ---------------------------------------------------------------------
 # WRAPPERS PER UNIFICARE LE FIRME DELLE FUNZIONI
-# =====================================================================
+# ---------------------------------------------------------------------
 
 def wrap_m1_base(jobs, C, gamma, time_limit, verbose):
-    # Salvavita: M1 base può diventare molto pesante.
-    # Nel Testbed B il numero di job non è fissato direttamente:
-    # cresce in base a |T| e alla classe.
-    #if len(jobs) > 25:
-    #    return {
-    #        "status": 9,
-    #        "runtime": time_limit,
-    #        "objective": None,
-    #        "servers_used": None,
-    #        "fireups": None,
-    #        "num_vars": None,
-    #        "num_constrs": None,
-    #    }
-
+    
     return solve_model1(
         jobs=jobs,
         C=C,
@@ -519,9 +502,9 @@ def wrap_m3_base(jobs, C, gamma, time_limit, verbose):
     )
 
 
-# =====================================================================
+# ---------------------------------------------------------------------
 # MAIN
-# =====================================================================
+# ---------------------------------------------------------------------
 
 def main():
     # Parametri prudenti.
@@ -584,19 +567,3 @@ if __name__ == "__main__":
     main()
 
 
-# =====================================================================
-# NOTA IMPORTANTE SULLE STATISTICHE DEL MODELLO
-# =====================================================================
-# Per creare i grafici su variabili e vincoli, ogni solve_model deve
-# restituire nel dizionario finale anche queste chiavi:
-#
-#     "num_vars": model.NumVars,
-#     "num_constrs": model.NumConstrs,
-#
-# Queste righe vanno aggiunte dentro ogni file modello, dopo model.optimize()
-# e prima del return finale.
-#
-# Se queste chiavi mancano in uno dei due modelli del confronto, il CSV viene
-# comunque creato, ma il grafico variabili/vincoli viene creato solo se entrambi
-# i modelli hanno dati disponibili.
-# =====================================================================
