@@ -1,5 +1,19 @@
 # Appunti per le slide
 
+## Struttura presentazione
+
+1. *Into*: problema (problema relativamente nuovo -> stato letteratura attuale)
+1. *1° modello*: spiegazione M1
+    1. *Ottimizzazioni*: verso M1opt
+    1. *Testbed*: A e B
+    1. *Confronto*: M1 vs M1opt
+1. *2° modello*: spiegazione M2 + M2otp --> confronto
+1. *3° modello*: spiegazione M3 + M3otp --> confronto
+1. *Confronto*: modelli ottimizzati
+1. *Risultati e considerazioni finali*
+
+---
+
 * gamma = 1 per considerare caso più difficile con due obiettivi con stesso peso (articolo originale si aveva caso semplice con gamma=1/n - conn n = # job - in cui il TBPP con FU si risolve come il TBPP normale: gamma <= 1/n)  
 * hanno introdotto solo il mdoello 3 (riduce drasticamente # variabili e vantaggio computazionale significativo)  
 * modello 2 riduce var da <=5n^2+n a <=2n^2+n e vincoli da <=4n^2+n a =3n^2+n (reminder: T->TS, 2n->n)  
